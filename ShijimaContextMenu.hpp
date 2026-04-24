@@ -19,6 +19,7 @@
 // 
 
 #include <QMenu>
+#include <QInputDialog>
 #include "ShijimaWidget.hpp"
 
 class QCloseEvent;
@@ -32,4 +33,6 @@ public:
     explicit ShijimaContextMenu(ShijimaWidget *parent);
 protected:
     void closeEvent(QCloseEvent *) override;
+private slots:
+    void showSendMessageDialog();
 };

@@ -83,6 +83,10 @@ ShijimaContextMenu::ShijimaContextMenu(ShijimaWidget *parent)
         ShijimaManager::defaultManager()->killAll();
     });
 
+    // Send message
+    action = addAction("Send message");
+    connect(action, &QAction::triggered, this, &ShijimaContextMenu::showSendMessageDialog);
+
     // Dismiss
     action = addAction("Dismiss");
     connect(action, &QAction::triggered, parent, &ShijimaWidget::closeAction);
@@ -102,3 +106,12 @@ ShijimaContextMenu::~ShijimaContextMenu() {
     }
 }
 */
+
+void ShijimaContextMenu::showSendMessageDialog() {
+    bool ok;
+    QString text = QInputDialog::getMultiLineText(parentWidget(),
+        "Send Message", "Enter your message:", "", &ok);
+    if (ok && !text.isEmpty()) {
+        emit shijimaParent()->sendMatrixMessage(text);
+    }
+}
