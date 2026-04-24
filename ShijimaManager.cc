@@ -768,7 +768,9 @@ ShijimaManager::ShijimaManager(QWidget *parent):
             if (!mascots().isEmpty()) {
                 auto firstMascot = mascots().first();
                 connect(m_matrixClient, &MatrixClient::messageReceived,
-                    firstMascot, &ShijimaWidget::showMessageBubble);
+                    [firstMascot](const QString &, const QString &body, const QString &){
+                        firstMascot->showMessageBubble(body);
+                    });
             }
         }
     }
