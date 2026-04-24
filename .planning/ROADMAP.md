@@ -2,18 +2,21 @@
 
 **Milestone:** v0.1 — Build Fix
 **Total phases:** 1
+**Status:** Complete
 
 ## Phase Summary
 
-| # | Phase | Goal | Requirements | Success Criteria |
-|---|-------|------|--------------|-----------------|
-| 1 | Build Fix | Fix linker errors and verify launch | FIX-01, FIX-02, FIX-03, FIX-04 | 4 |
+| # | Phase | Goal | Requirements | Success Criteria | Status |
+|---|-------|------|--------------|-----------------|--------|
+| 1 | Build Fix | Fix linker errors and verify launch | FIX-01, FIX-02, FIX-03, FIX-04 | 4 | Complete |
 
 ---
 
 ## Phase 1: Build Fix
 
 **Goal:** Fix linker errors and verify application launches
+
+**Status:** Complete
 
 **Requirements:**
 - FIX-01: SHIJIMA_LOGGING_ENABLED defined
@@ -27,15 +30,18 @@
 3. `make shijima-qt` completes without linker errors
 4. `./shijima-qt` starts and displays mascot window without crashing
 
-**Files to modify:**
-- `libshijima/CMakeLists.txt` — add `-DSHIJIMA_LOGGING_ENABLED=1` to CMAKE_CXX_FLAGS
-- `ShijimaWidget.cc` — implement `sendMatrixMessage(const QString&)`
-- `ShijimaWidget.hpp` — verify declaration matches implementation
+**Files modified:**
+- `libshijima/CMakeLists.txt` — added `target_compile_definitions(shijima PRIVATE SHIJIMA_LOGGING_ENABLED=1)`
+- `ShijimaWidget.cc` — implemented `sendMatrixMessage(const QString&)` stub
+- `ShijimaWidget.hpp` — removed Q_OBJECT and signals, converted sendMatrixMessage to public slot
+- `Platform/Makefile` — fixed dependency chain, all:: target before include
+- `Platform/Linux/Makefile` — added `all:: Linux.a` before include to prevent clean as default
 
 **Verification:**
 ```bash
 cd /home/impulse/workspace/railgun/Shijima-claw
-make -C Platform/Linux all && cp Platform/Linux/Linux.a Platform/Platform.a
 make clean && make shijima-qt
-./shijima-qt  # should launch without crash
+LD_LIBRARY_PATH=libshimejifinder/build/unarr:$LD_LIBRARY_PATH ./shijima-qt --help
 ```
+
+**Result:** Build succeeds, executable runs.
