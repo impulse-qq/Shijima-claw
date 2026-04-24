@@ -17,6 +17,7 @@ SOURCES = main.cc \
 	ShimejiInspectorDialog.cc \
 	DefaultMascot.cc \
 	ShijimaHttpApi.cc \
+	MatrixClient.cc \
 	cli.cc \
 	resources.rc
 
