@@ -40,6 +40,7 @@
 
 class QVBoxLayout;
 class QWidget;
+class MatrixClient;
 
 class ShijimaManager : public PlatformWidget<QMainWindow>
 {
@@ -127,4 +128,7 @@ private:
     std::mutex m_mutex;
     std::condition_variable m_tickCallbackCompletion;
     std::list<std::function<void(ShijimaManager *)>> m_tickCallbacks;
+    MatrixClient *m_matrixClient = nullptr;
+public:
+    MatrixClient *matrixClient() { return m_matrixClient; }
 };

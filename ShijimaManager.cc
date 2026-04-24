@@ -38,7 +38,9 @@
 #include "PlatformWidget.hpp"
 #include "ShijimaLicensesDialog.hpp"
 #include "ShijimaWidget.hpp"
+#include "MatrixClient.hh"
 #include <QDirIterator>
+#include <QDir>
 #include <QDesktopServices>
 #include <shijima/mascot/factory.hpp>
 #include <shimejifinder/analyze.hpp>
@@ -700,7 +702,8 @@ ShijimaManager::ShijimaManager(QWidget *parent):
     m_sandboxWidget(nullptr),
     m_settings("pixelomer", "Shijima-Qt"),
     m_idCounter(0), m_httpApi(this),
-    m_hasTickCallbacks(false)
+    m_hasTickCallbacks(false),
+    m_matrixClient(nullptr)
 {
     for (auto screen : QGuiApplication::screens()) {
         screenAdded(screen);
@@ -752,6 +755,23 @@ ShijimaManager::ShijimaManager(QWidget *parent):
     buildToolbar();
 
     m_httpApi.start("127.0.0.1", 32456);
+
+    m_matrixClient = new MatrixClient(this);
+
+    QString configPath = QDir::homePath() + "/.config/shijima-qt/matrix.json";
+    if (QFile::exists(configPath)) {
+        if (m_matrixClient->loadConfig(configPath)) {
+            m_matrixClient->login();
+            m_matrixClient->startSyncLoop();
+
+            // Connect Matrix messages to first mascot bubble
+            if (!mascots().isEmpty()) {
+                auto firstMascot = mascots().first();
+                connect(m_matrixClient, &MatrixClient::messageReceived,
+                    firstMascot, &ShijimaWidget::showMessageBubble);
+            }
+        }
+    }
 }
 
 void ShijimaManager::itemDoubleClicked(QListWidgetItem *qItem) {
