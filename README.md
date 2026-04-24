@@ -61,3 +61,69 @@ Shijima-Qt supports KDE Plasma 6 and GNOME 46 in both Wayland and X11. To get th
 ### Windows
 
 Only tested on Windows 11. May also work on Windows 10. Window tracking is supported and no extra actions should be necessary to run Shijima-Qt.
+
+## Matrix Integration
+
+Shijima-Qt supports Matrix messaging integration. When configured, your desktop mascot can:
+
+- **Receive messages** from a Matrix room and display them as speech bubbles
+- **Send messages** to a Matrix room via the right-click context menu
+
+### Configuration
+
+Create the config file at `~/.config/shijima-qt/matrix.json`:
+
+```json
+{
+  "homeserver": "https://matrix.org",
+  "userId": "@yourusername:matrix.org",
+  "accessToken": "syt_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "roomId": "!xxxxxxxxxxxxxxxxxxx:matrix.org"
+}
+```
+
+| Field | Description |
+|-------|-------------|
+| `homeserver` | Your Matrix homeserver URL (e.g. `https://matrix.org`) |
+| `userId` | Your full Matrix user ID (e.g. `@alice:matrix.org`) |
+| `accessToken` | Your Matrix access token for authentication |
+| `roomId` | The room ID to join (e.g. `!abc123:matrix.org`) |
+
+### Getting Your Access Token
+
+**Via Element (Web/Desktop):**
+1. Open Element and log in
+2. Go to **Settings** → **Help & About** → **Advanced**
+3. Click **Access Token** → copy the token
+
+**Via curl:**
+```bash
+curl -XPOST -d '{"type":"m.login.password", "user":"yourusername", "password":"yourpassword"}' \
+  "https://matrix.org/_matrix/client/r0/login"
+```
+
+### Finding Room ID
+
+In Element, open the room → **Room Settings** → **Advanced** → copy the **Internal room ID**.
+
+### Example: Complete Setup
+
+```bash
+# 1. Create config directory
+mkdir -p ~/.config/shijima-qt
+
+# 2. Write config (replace with your values)
+cat > ~/.config/shijima-qt/matrix.json << 'EOF'
+{
+  "homeserver": "https://matrix.org",
+  "userId": "@shijima_demo:matrix.org",
+  "accessToken": "syt_xxxxxxxx_xxxxxxxx",
+  "roomId": "!xxxxxxxxxxxx:matrix.org"
+}
+EOF
+
+# 3. Run Shijima-Qt (Linux example)
+LD_LIBRARY_PATH=libshimejifinder/build/unarr:$LD_LIBRARY_PATH ./shijima-qt
+```
+
+Now right-click your mascot and select **Send Message** to chat through Matrix!
