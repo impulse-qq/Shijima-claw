@@ -19,6 +19,7 @@
 // 
 
 #include <QWidget>
+#include <QTimer>
 #include <memory>
 #include <QRegion>
 #include "Asset.hpp"
@@ -67,6 +68,10 @@ public:
         return m_data->name();
     }
     ~ShijimaWidget();
+public slots:
+    void showMessageBubble(const QString &text);
+signals:
+    void messageReceived(const QString &sender, const QString &body);
 protected:
     void paintEvent(QPaintEvent *) override;
     void mousePressEvent(QMouseEvent *) override;
@@ -100,4 +105,6 @@ private:
     bool m_paused = false;
     bool m_markedForDeletion = false;
     int m_mascotId;
+    QTimer *m_messageBubbleTimer;
+    QString m_currentBubbleText;
 };

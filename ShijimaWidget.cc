@@ -28,6 +28,7 @@
 #include <QDebug>
 #include <QGuiApplication>
 #include <QTextStream>
+#include <QTimer>
 #include <shijima/shijima.hpp>
 #include "Platform/Platform.hpp"
 #include "ShimejiInspectorDialog.hpp"
@@ -74,6 +75,13 @@ ShijimaWidget::ShijimaWidget(MascotData *mascotData,
         setWindowFlags(flags);
     }
     setFixedSize(m_windowWidth, m_windowHeight);
+
+    m_messageBubbleTimer = new QTimer(this);
+    m_messageBubbleTimer->setSingleShot(true);
+    connect(m_messageBubbleTimer, &QTimer::timeout, [this](){
+        m_currentBubbleText.clear();
+        repaint();
+    });
 }
 
 
@@ -115,6 +123,17 @@ void ShijimaWidget::paintEvent(QPaintEvent *event) {
     auto scaledSize = image.size() / m_drawScale;
     QPainter painter(this);
     painter.drawImage(QRect { m_drawOrigin, scaledSize }, image);
+    if (!m_currentBubbleText.isEmpty()) {
+        QFont font = painter.font();
+        font.setPointSize(10);
+        painter.setFont(font);
+        QRect bubbleRect(m_drawOrigin.x(), m_drawOrigin.y() - 30, 200, 25);
+        painter.setBrush(QColor(255, 255, 220, 230));
+        painter.setPen(Qt::darkGray);
+        painter.drawRoundedRect(bubbleRect, 5, 5);
+        painter.drawText(bubbleRect, Qt::AlignLeft | Qt::AlignVCenter,
+            m_currentBubbleText.left(50));
+    }
 #ifdef __linux__
     if (Platform::useWindowMasks()) {
         m_windowMask = QBitmap::fromPixmap(asset.mask(isMirroredRender())
@@ -293,6 +312,12 @@ void ShijimaWidget::showContextMenu(QPoint const& pos) {
     ShijimaContextMenu *menu = new ShijimaContextMenu(this);
     menu->setAttribute(Qt::WA_DeleteOnClose);
     menu->popup(pos);
+}
+
+void ShijimaWidget::showMessageBubble(const QString &text) {
+    m_currentBubbleText = text;
+    m_messageBubbleTimer->start(5000);
+    repaint();
 }
 
 ShijimaWidget::~ShijimaWidget() {
