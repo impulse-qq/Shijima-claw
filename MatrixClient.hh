@@ -65,7 +65,7 @@ private:
     Q_DISABLE_COPY(MatrixClient)
 
     void syncLoop();
-    long long parseSyncNextBatch(const QJsonObject &root);
+    QString parseSyncNextBatch(const QJsonObject &root);
     QString extractRoomId(const QJsonObject &event);
     QString extractSender(const QJsonObject &event);
     QString extractBody(const QJsonObject &event);
@@ -79,6 +79,6 @@ private:
     QString m_homeserver;
     QString m_userId;
     QString m_lastError;
-    long long m_nextBatch;
+    QString m_nextBatch;
     int m_retryCount;
 };
