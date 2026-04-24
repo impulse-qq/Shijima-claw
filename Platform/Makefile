@@ -1,9 +1,13 @@
+all:: Platform.a
+
 include ../common.mk
 
-all::
-	$(MAKE) -C $(BUILD_PLATFORM) || { rm -f Platform.a && false; }
-	$(call copy_changed,$(BUILD_PLATFORM)/$(BUILD_PLATFORM).a,Platform.a)
+Linux/Linux.a:
+	$(MAKE) -C Linux
+
+Platform.a: Linux/Linux.a
+	cp -uv $< $@
 
 clean::
-	$(MAKE) -C $(BUILD_PLATFORM) clean
+	$(MAKE) -C Linux clean
 	rm -f Platform.a

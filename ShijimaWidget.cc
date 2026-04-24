@@ -320,6 +320,11 @@ void ShijimaWidget::showMessageBubble(const QString &text) {
     repaint();
 }
 
+void ShijimaWidget::sendMatrixMessage(const QString &text) {
+    // TODO: Integrate with MatrixClient to send messages
+    showMessageBubble(text);
+}
+
 ShijimaWidget::~ShijimaWidget() {
     if (m_dragTargetPt != nullptr) {
         *m_dragTargetPt = nullptr;

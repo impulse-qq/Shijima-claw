@@ -1,3 +1,5 @@
+all:: Linux.a
+
 include ../../common.mk
 
 SOURCES = Platform.cc ActiveWindowObserver.cc KWin.cc PrivateActiveWindowObserver.cc \
