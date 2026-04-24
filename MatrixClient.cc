@@ -231,3 +231,5 @@ bool MatrixClient::isValidEvent(const QJsonObject &event) {
     }
     return true;
 }
+
+#include "MatrixClient.moc"

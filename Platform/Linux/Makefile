@@ -31,7 +31,7 @@ Linux.a: $(OBJECTS)
 	fi
 
 gnome_script.zip: .work/gnome_script
-	zip -jr $@ $</*
+	python3 -c "import zipfile, os; zf = zipfile.ZipFile('$@', 'w', zipfile.ZIP_DEFLATED); [zf.write(os.path.join(r,f), f) for r,_,fs in os.walk('$<') for f in fs]"
 
 GNOMEWindowObserverBackend.cc: gnome_script.c
 	touch $@

@@ -21,6 +21,9 @@ SOURCES = main.cc \
 	cli.cc \
 	resources.rc
 
+# MatrixClient requires MOC processing
+MatrixClient.o: MatrixClient.cc MatrixClient.moc
+
 DEFAULT_MASCOT_FILES := $(addsuffix .png,$(addprefix DefaultMascot/img/shime,$(shell seq -s ' ' 1 1 46))) \
 	DefaultMascot/behaviors.xml DefaultMascot/actions.xml
 

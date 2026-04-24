@@ -45,9 +45,9 @@ endif
 CONFIG_VALID := 0
 ifeq ($(CONFIG),release)
 	CONFIG_VALID := 1
-	CONFIG_CFLAGS := -O3 -flto -DNDEBUG
-	CONFIG_CXXFLAGS := -O3 -flto -DNDEBUG
-	CONFIG_LDFLAGS := -flto
+	CONFIG_CFLAGS := -O3 -DNDEBUG
+	CONFIG_CXXFLAGS := -O3 -DNDEBUG
+	CONFIG_LDFLAGS :=
 	CONFIG_CMAKEFLAGS := -DCMAKE_BUILD_TYPE=Release
 endif
 ifeq ($(CONFIG),debug)
@@ -138,8 +138,8 @@ endef
 	EXE := .exe
 endif
 
-STD_CFLAGS := -Wall
-STD_CXXFLAGS := -Wall -std=c++17
+STD_CFLAGS := -Wall -fPIC
+STD_CXXFLAGS := -Wall -std=c++17 -fPIC
 
 PKG_CFLAGS = $(shell [ -z "$(PKG_LIBS)" ] || $(PKG_CONFIG) --cflags $(PKG_LIBS))
 PKG_LDFLAGS = $(shell [ -z "$(PKG_LIBS)" ] || $(PKG_CONFIG) --libs $(PKG_LIBS))
@@ -174,7 +174,12 @@ CMAKEFLAGS = $(CONFIG_CMAKEFLAGS)
 %.o: %.rc
 	$(WINDRES) $< -o $@
 
-all::
+# Qt MOC rules for MatrixClient (Q_OBJECT class)
+ifneq ($(wildcard MatrixClient.hh),)
+MOC := $(shell which moc-qt6 2>/dev/null || which /usr/lib/qt6/moc 2>/dev/null || echo moc)
+MatrixClient.moc: MatrixClient.hh
+	$(MOC) MatrixClient.hh -o MatrixClient.moc
+endif
 
 clean::
 	rm -f *.d

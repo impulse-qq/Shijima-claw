@@ -112,6 +112,6 @@ void ShijimaContextMenu::showSendMessageDialog() {
     QString text = QInputDialog::getMultiLineText(parentWidget(),
         "Send Message", "Enter your message:", "", &ok);
     if (ok && !text.isEmpty()) {
-        emit shijimaParent()->sendMatrixMessage(text);
+        shijimaParent()->sendMatrixMessage(text);
     }
 }

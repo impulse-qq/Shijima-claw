@@ -48,12 +48,7 @@ int main(int argc, char **argv) {
             throw std::runtime_error("Shijima-Qt is already running!");
         }
         ShijimaManager::defaultManager()->show();
-    QShortcut *matrixShortcut = new QShortcut(QKeySequence("Ctrl+Shift+M"), mainWindow);
-    QObject::connect(matrixShortcut, &QShortcut::activated, [=](){
-        ShijimaManager::defaultManager()->showMatrixSendDialog();
-    });
-}
-    catch (std::exception &ex) {
+    } catch (std::exception &ex) {
         QMessageBox *msg = new QMessageBox {};
         msg->setText("Shijima-Qt failed to start. Reason: " +
             QString::fromUtf8(ex.what()));
@@ -61,6 +56,10 @@ int main(int argc, char **argv) {
         msg->setAttribute(Qt::WA_DeleteOnClose);
         msg->show();
     }
+    QShortcut *matrixShortcut = new QShortcut(QKeySequence("Ctrl+Shift+M"), ShijimaManager::defaultManager());
+    QObject::connect(matrixShortcut, &QShortcut::activated, [=](){
+        ShijimaManager::defaultManager()->showMatrixSendDialog();
+    });
     int ret = app.exec();
     ShijimaManager::finalize();
     AssetLoader::finalize();

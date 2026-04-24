@@ -27,6 +27,7 @@
 #include <QCloseEvent>
 #include <QMenuBar>
 #include <QFileDialog>
+#include <QColorDialog>
 #include <QPushButton>
 #include <QWindow>
 #include <QTextStream>
@@ -765,8 +766,8 @@ ShijimaManager::ShijimaManager(QWidget *parent):
             m_matrixClient->startSyncLoop();
 
             // Connect Matrix messages to first mascot bubble
-            if (!mascots().isEmpty()) {
-                auto firstMascot = mascots().first();
+            if (!mascots().empty()) {
+                ShijimaWidget *firstMascot = mascots().front();
                 connect(m_matrixClient, &MatrixClient::messageReceived,
                     [firstMascot](const QString &, const QString &body, const QString &){
                         firstMascot->showMessageBubble(body);
