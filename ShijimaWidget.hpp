@@ -72,6 +72,7 @@ public slots:
     void showMessageBubble(const QString &text);
 signals:
     void messageReceived(const QString &sender, const QString &body);
+    void sendMatrixMessage(const QString &text);
 protected:
     void paintEvent(QPaintEvent *) override;
     void mousePressEvent(QMouseEvent *) override;
