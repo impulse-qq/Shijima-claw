@@ -37,15 +37,7 @@ public:
     };
 
     explicit MatrixClient(QObject *parent = nullptr);
-    ~MatrixClient() {
-        if (m_syncThread) {
-            m_running.store(false);
-            if (m_syncThread->joinable()) {
-                m_syncThread->join();
-            }
-            delete m_syncThread;
-        }
-    }
+    ~MatrixClient();
 
     bool loadConfig(const QString &path);
     void login();
@@ -80,5 +72,5 @@ private:
     QString m_userId;
     QString m_lastError;
     QString m_nextBatch;
-    int m_retryCount;
+    std::atomic<int> m_retryCount;
 };

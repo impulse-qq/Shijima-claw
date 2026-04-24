@@ -114,7 +114,10 @@ void MatrixClient::sendMessage(const QString &text) {
 
     Client cli(m_homeserver.toStdString());
     std::string path = "/_matrix/client/r0/rooms/" + m_roomId.toStdString()
-        + "/send/m.room.message/" + std::to_string(txnId) + "?access_token=" + m_accessToken.toStdString();
+        + "/send/m.room.message/" + std::to_string(txnId);
+
+    Headers headers;
+    headers.emplace("Authorization", "Bearer " + m_accessToken.toStdString());
 
     QJsonObject content;
     content["msgtype"] = "m.text";
@@ -127,7 +130,7 @@ void MatrixClient::sendMessage(const QString &text) {
     QJsonDocument doc(message);
     std::string body = doc.toJson(QJsonDocument::Compact).toStdString();
 
-    auto res = cli.Put(path.c_str(), body, "application/json");
+    auto res = cli.Put(path.c_str(), headers, body, "application/json");
     if (!res || res->status != 200) {
         std::string err = res ? res->body : "Connection failed";
         m_lastError = QString::fromStdString(err);
@@ -137,6 +140,8 @@ void MatrixClient::sendMessage(const QString &text) {
 
 void MatrixClient::syncLoop() {
     Client cli(m_homeserver.toStdString());
+    Headers headers;
+    headers.emplace("Authorization", "Bearer " + m_accessToken.toStdString());
 
     while (m_running.load()) {
         if (!m_connected.load()) {
@@ -148,9 +153,8 @@ void MatrixClient::syncLoop() {
         if (!m_nextBatch.isEmpty()) {
             path += "&since=" + m_nextBatch.toStdString();
         }
-        path += "&access_token=" + m_accessToken.toStdString();
 
-        auto res = cli.Get(path.c_str());
+        auto res = cli.Get(path.c_str(), headers);
         if (!res || res->status != 200) {
             m_connected = false;
             emit connectedChanged(false);
