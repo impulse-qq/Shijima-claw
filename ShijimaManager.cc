@@ -61,7 +61,7 @@
 #include <string>
 #include <QLabel>
 #include <QFormLayout>
-#include <QColorDialog>
+#include <QInputDialog>
 #include <cstring>
 #include <cstdint>
 
@@ -1126,6 +1126,16 @@ bool ShijimaManager::eventFilter(QObject *obj, QEvent *event) {
         }
     }
     return QMainWindow::eventFilter(obj, event);
+}
+
+void ShijimaManager::showMatrixSendDialog() {
+    if (m_matrixClient == nullptr) return;
+    bool ok;
+    QString text = QInputDialog::getMultiLineText(nullptr,
+        "Send Message", "Enter your message:", "", &ok);
+    if (ok && !text.isEmpty()) {
+        m_matrixClient->sendMessage(text);
+    }
 }
 
 void ShijimaManager::spawnClicked() {

@@ -131,4 +131,5 @@ private:
     MatrixClient *m_matrixClient = nullptr;
 public:
     MatrixClient *matrixClient() { return m_matrixClient; }
+    void showMatrixSendDialog();
 };
