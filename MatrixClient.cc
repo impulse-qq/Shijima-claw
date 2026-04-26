@@ -241,8 +241,46 @@ void MatrixClient::syncLoop() {
 
         MATRIX_LOG(QString("syncLoop() GET ") + QString::fromStdString(path));
         auto res = cli.Get(path.c_str(), headers);
-        if (!res || res->status != 200) {
-            std::string err = res ? ("HTTP " + std::to_string(res->status)) : "no response";
+        if (!res || res->status == 401) {
+            if (res && res->status == 401) {
+                MATRIX_LOG("syncLoop() got 401, refreshing token");
+            } else {
+                std::string err = res ? ("HTTP " + std::to_string(res->status)) : "no response";
+                MATRIX_ERR(QString("syncLoop() failed: ") + QString::fromStdString(err));
+            }
+            m_connected = false;
+            emit connectedChanged(false);
+
+            // Attempt token refresh
+            login();
+            if (!m_connected.load()) {
+                m_retryCount++;
+                int delay = std::min(60, 1 << m_retryCount);
+                MATRIX_LOG(QString("syncLoop() token refresh failed, retry in ") + QString::number(delay) + "s (retry #" + QString::number(m_retryCount) + ")");
+                std::this_thread::sleep_for(std::chrono::seconds(delay));
+                continue;
+            }
+
+            // Retry with new token
+            Headers retryHeaders;
+            retryHeaders.emplace("Authorization", "Bearer " + m_accessToken.toStdString());
+            MATRIX_LOG("syncLoop() token refreshed, retrying sync");
+            auto retryRes = cli.Get(path.c_str(), retryHeaders);
+            if (!retryRes || retryRes->status != 200) {
+                std::string err = retryRes ? ("HTTP " + std::to_string(retryRes->status)) : "no response";
+                MATRIX_ERR(QString("syncLoop() retry failed: ") + QString::fromStdString(err));
+                m_connected = false;
+                emit connectedChanged(false);
+                m_retryCount++;
+                int delay = std::min(60, 1 << m_retryCount);
+                std::this_thread::sleep_for(std::chrono::seconds(delay));
+                continue;
+            }
+            std::swap(res, retryRes);
+            m_retryCount = 0;
+            MATRIX_LOG(QString("syncLoop() got response after token refresh, status=200, body_len=") + QString::number(res->body.size()));
+        } else if (res->status != 200) {
+            std::string err = "HTTP " + std::to_string(res->status);
             MATRIX_ERR(QString("syncLoop() failed: ") + QString::fromStdString(err));
             m_connected = false;
             emit connectedChanged(false);
