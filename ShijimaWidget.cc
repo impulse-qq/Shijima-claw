@@ -35,6 +35,7 @@
 #include "AssetLoader.hpp"
 #include "ShijimaContextMenu.hpp"
 #include "ShijimaManager.hpp"
+#include "MatrixClient.hh"
 #include <shimejifinder/utils.hpp>
 
 static QFile *s_debugLogFile = nullptr;
@@ -340,7 +341,30 @@ void ShijimaWidget::showMessageBubble(const QString &text) {
 
 void ShijimaWidget::sendMatrixMessage(const QString &text) {
     debugLog(QString("sendMatrixMessage: %1").arg(text));
-    // TODO: Integrate with MatrixClient to send messages
+
+    ShijimaManager *manager = ShijimaManager::defaultManager();
+    MatrixClient *client = manager ? manager->matrixClient() : nullptr;
+
+    if (!client) {
+        debugLog("sendMatrixMessage: no MatrixClient available");
+        showMessageBubble("[Error: Matrix not configured]");
+        return;
+    }
+
+    if (!client->isConnected()) {
+        debugLog("sendMatrixMessage: not connected to Matrix server");
+        showMessageBubble("[Error: Not connected to Matrix]");
+        return;
+    }
+
+    // Wire up error signal to bubble display
+    QObject::connect(client, &MatrixClient::errorOccurred, this,
+        [this](const QString &error) {
+            debugLog(QString("Matrix send error: %1").arg(error));
+            showMessageBubble(QString("[Error: %1]").arg(error));
+        }, Qt::SingleShotConnection);
+
+    client->sendMessage(text);
     showMessageBubble(text);
 }
 
