@@ -1,175 +1,211 @@
 # Testing Patterns
 
-**Analysis Date:** 2026-04-19
+**Analysis Date:** 2026/04/26
 
-## Test Framework
+## Test Infrastructure Status
 
-**Runner:**
-- **None detected** — Project has zero test infrastructure
-- No `test/`, `tests/`, or `spec/` directories
-- No `*.test.*` or `*.spec.*` files found
-- No test configuration files (no `jest.config.*`, `vitest.config.*`, `CMakeLists.txt` with test targets)
+**No unit, integration, or E2E tests exist in this codebase.**
 
-**Assertion Library:**
-- Not applicable
+The project has zero test infrastructure:
+- No `test/` or `tests/` directories
+- No `*.test.*` or `*.spec.*` files
+- No test configuration files (no `jest.config.*`, `vitest.config.*`, CMake test targets)
+- No testing framework dependencies in build system
 
-**Run Commands:**
-- No test commands exist
-- Build commands only:
-  ```bash
-  CONFIG=release make -j8    # Build release
-  CONFIG=debug make -j8      # Build debug
-  ```
-
-## Test File Organization
-
-**Location:**
-- Not applicable — no test files exist
-
-**Naming:**
-- Not applicable
-
-**Structure:**
-- Not applicable
-
-## Test Structure
-
-**Not applicable.** The following guidance is provided for future test implementation:
-
-Given the project structure, a recommended test layout would be:
-
-```
-tests/
-├── unit/
-│   ├── Asset_test.cc
-│   ├── MascotData_test.cc
-│   └── AssetLoader_test.cc
-├── integration/
-│   ├── ShijimaHttpApi_test.cc
-│   └── cli_test.cc
-└── fixtures/
-    └── test_mascot.mascot/
-```
-
-Or co-located alongside source:
-```
-src/
-├── Asset.cc
-├── Asset_test.cc
-├── MascotData.cc
-└── MascotData_test.cc
-```
-
-## Mocking
-
-**Framework:** Not applicable
-
-**Patterns:**
-- Not applicable
-
-**What to Mock (when tests are added):**
-- HTTP server responses (`httplib::Server`)
-- Platform-specific backends (`Platform::ActiveWindowObserver`)
-- File system operations (mascot loading, archive extraction)
-- Qt event loops and timers
-- `QSettings` for configuration testing
-
-**What NOT to Mock:**
-- `libshijima` mascot behavior engine (integration test instead)
-- Qt core types (`QString`, `QImage`, `QPoint`)
-- Math utilities (`shijima::math::vec2`)
-
-## Fixtures and Factories
-
-**Test Data:**
-- Not applicable
-
-**Location:**
-- Not applicable
-
-**Suggested Test Mascot:**
-- `DefaultMascot/` directory could serve as a reference fixture
-- Contains 46 PNG frames + `behaviors.xml` + `actions.xml`
-
-## Coverage
-
-**Requirements:** None enforced
-
-**View Coverage:**
-- Not applicable — no coverage tooling configured
-
-## Test Types
-
-**Unit Tests:**
-- Not implemented
-- Candidates: `Asset`, `MascotData`, `AssetLoader`, `SoundEffectManager`
-
-**Integration Tests:**
-- Not implemented
-- Candidates: `ShijimaHttpApi` (HTTP endpoints), CLI commands, mascot spawning/dismissal flow
-
-**E2E Tests:**
-- Not implemented
-- Would require Qt test framework (`QTest`) or external automation
-- Candidates: Full mascot lifecycle (spawn → animate → dismiss)
-
-## Recommended Testing Approach
-
-Given the Qt6/C++17 stack, the following options are available:
-
-### Option 1: Qt Test Framework (QTest)
-```cpp
-#include <QTest>
-
-class TestMascotData : public QObject {
-    Q_OBJECT
-private slots:
-    void testValidMascot() {
-        MascotData data { "test.mascot", 0 };
-        QVERIFY(data.valid());
-    }
-    void testInvalidPath() {
-        QVERIFY_EXCEPTION_THROWN(
-            MascotData { "invalid", 0 },
-            std::runtime_error
-        );
-    }
-};
-QTEST_MAIN(TestMascotData)
-```
-
-### Option 2: Google Test
-```cpp
-#include <gtest/gtest.h>
-
-TEST(MascotDataTest, ValidMascot) {
-    MascotData data { "test.mascot", 0 };
-    EXPECT_TRUE(data.valid());
-}
-
-TEST(MascotDataTest, InvalidPath) {
-    EXPECT_THROW(MascotData { "invalid", 0 }, std::runtime_error);
-}
-```
-
-### Option 3: Catch2
-```cpp
-#include <catch2/catch_test_macros.hpp>
-
-TEST_CASE("MascotData validates correctly", "[mascot]") {
-    MascotData data { "test.mascot", 0 };
-    REQUIRE(data.valid());
-}
-```
+**Testing exists only in dependencies:**
+- `cpp-httplib/test/` - httplib's own test suite (not part of this project)
+- `libshimejifinder/unarr/test/` - unarr archive library tests (submodule)
+- `libshimejifinder/libarchive/test_utils/` - libarchive utility tests (submodule)
 
 ## Build Integration
 
-To add tests to the existing Makefile build system:
+**Build Commands:**
+```bash
+CONFIG=release make -j8    # Release build
+CONFIG=debug make -j8      # Debug build
+```
+
+**CI Pipeline (GitHub Actions):** `.github/workflows/build-debug.yaml`
+
+The CI builds for three platforms but does NOT run tests:
+- Windows (Ubuntu Docker with mingw64)
+- Linux (ubuntu-22.04 and ubuntu-24.04-arm)
+- macOS (macos-14)
+
+Artifacts are archived but no test execution occurs.
+
+## Unit Test Candidates
+
+Based on code review, the following components should have unit tests:
+
+**High Priority:**
+
+1. **Asset (`Asset.cc`)**
+   - `getRectForImage()` - image cropping algorithm
+   - `setImage()` - alpha mask generation, mirroring
+   - File: `/home/impulse/workspace/railgun/Shijima-claw/Asset.cc`
+
+2. **MascotData (`MascotData.cc`)**
+   - XML parsing validation
+   - Path resolution (`imgRoot()`, `actionsXML()`, `behaviorsXML()`)
+   - `valid()` check
+   - File: `/home/impulse/workspace/railgun/Shijima-claw/MascotData.cc`
+
+3. **AssetLoader (`AssetLoader.cc`)**
+   - Asset caching mechanism
+   - Path resolution
+   - File: `/home/impulse/workspace/railgun/Shijima-claw/AssetLoader.cc`
+
+4. **MatrixClient (`MatrixClient.cc`)**
+   - JSON parsing (`loadConfig()`, `parseSyncNextBatch()`)
+   - Event validation (`isValidEvent()`)
+   - Message extraction (`extractBody()`, `extractSender()`)
+   - File: `/home/impulse/workspace/railgun/Shijima-claw/MatrixClient.cc`
+
+## Integration Test Candidates
+
+1. **ShijimaHttpApi (`ShijimaHttpApi.cc`)**
+   - REST endpoint handling
+   - JSON request parsing
+   - Error response formatting
+   - Port 32456 binding
+   - File: `/home/impulse/workspace/railgun/Shijima-claw/ShijimaHttpApi.cc`
+
+2. **CLI (`cli.cc`)**
+   - Argument parsing
+   - API client calls to HTTP server
+   - Error handling
+   - File: `/home/impulse/workspace/railgun/Shijima-claw/cli.cc`
+
+3. **ShijimaManager (`ShijimaManager.cc`)**
+   - Mascot lifecycle (spawn, kill, killAll)
+   - Import flow (archive extraction, mascot loading)
+   - Multi-screen environment handling
+   - File: `/home/impulse/workspace/railgun/Shijima-claw/ShijimaManager.cc`
+
+## Test Data Fixtures
+
+**DefaultMascot** directory serves as a reference mascot:
+- Location: `/home/impulse/workspace/railgun/Shijima-claw/DefaultMascot/`
+- Contains 46 PNG frames (`img/shime1.png` through `img/shime46.png`)
+- `behaviors.xml` - behavior state machine
+- `actions.xml` - action definitions
+
+**Mascot Archive Structure** (for import testing):
+- `.mascot` directory format
+- `actions.xml` - required
+- `behaviors.xml` - required
+- `img/` directory with PNG frames
+- `sound/` directory (optional) with audio files
+
+## Recommended Testing Approach
+
+Given the Qt6/C++17 stack, these testing options are available:
+
+### Qt Test Framework (QTest)
+
+Natural choice given Qt dependency:
+```cpp
+#include <QTest>
+
+class TestAsset : public QObject {
+    Q_OBJECT
+private slots:
+    void testGetRectForImage() {
+        QImage image(10, 10, QImage::Format_ARGB32);
+        image.fill(Qt::transparent);
+        image.setPixelColor(5, 5, Qt::red);
+        Asset asset;
+        asset.setImage(image);
+        QRect rect = asset.getRectForImage(image);
+        QVERIFY(rect.width() > 0);
+        QVERIFY(rect.height() > 0);
+    }
+};
+QTEST_MAIN(TestAsset)
+```
+
+### Google Test
+
+Requires adding `gtest` dependency to build:
+```cpp
+#include <gtest/gtest.h>
+
+TEST(AssetTest, ImageRectCalculation) {
+    QImage image(100, 100, QImage::Format_ARGB32);
+    image.fill(Qt::transparent);
+    image.setPixelColor(50, 50, Qt::red);
+    Asset asset;
+    asset.setImage(image);
+    EXPECT_TRUE(asset.offset().width() > 0);
+}
+```
+
+### Catch2
+
+Header-only alternative:
+```cpp
+#include <catch2/catch_test_macros.hpp>
+
+TEST_CASE("Asset trims transparent borders", "[asset]") {
+    QImage image(64, 64, QImage::Format_ARGB32);
+    image.fill(Qt::transparent);
+    image.setPixelColor(10, 10, Qt::blue);
+    Asset asset;
+    asset.setImage(image);
+    REQUIRE(asset.offset().topLeft().x() == 10);
+}
+```
+
+## Mocking Strategy
+
+**What to Mock:**
+- HTTP responses from Matrix homeserver (mock `httplib::Client`)
+- Platform backends (`Platform::ActiveWindowObserver` across Linux/DBus/KWin)
+- File system operations (archive extraction, mascot directory creation)
+- `QSettings` for configuration testing
+- Qt event loop (using `QTest::qWait()`)
+
+**What NOT to Mock:**
+- `QString`, `QImage`, `QPoint` - test with real Qt types
+- `shijima::mascot::manager` - integration test instead
+- `libshimejifinder::analyze` - integration test instead
+
+## Coverage Gaps
+
+**Critical areas without tests:**
+1. Import flow (archive analysis + extraction + mascot loading)
+2. Mascot spawning and lifecycle
+3. Multi-screen environment handling
+4. Platform-specific window tracking (KWin/DBus/GNOME)
+5. HTTP API endpoint handlers
+6. Matrix sync loop and message parsing
+7. Windowed mode transitions
+8. Tick synchronization callbacks
+
+**No test coverage enforcement:**
+- No coverage tooling configured
+- No CI test step
+- No pre-commit test hook
+
+## Testing Challenges
+
+1. **Qt Application Requirement** - Most tests need `QApplication` instance
+2. **Display Dependency** - GUI components (`ShijimaWidget`) need virtual framebuffer or headless rendering
+3. **Singleton Pattern** - `ShijimaManager::defaultManager()` and `AssetLoader::defaultLoader()` require `finalize()` between tests
+4. **Platform-Specific Code** - Linux/DBus/KWin backends need Linux environment
+5. **HTTP Server Binding** - `ShijimaHttpApi` binds port 32456; tests need port isolation
+6. **Submodule Initialization** - `libshijima` and `libshimejifinder` must be built first
+
+## Adding Tests to Build System
+
+To integrate tests into the Makefile:
 
 ```makefile
-# Example addition to Makefile
+# In common.mk or Makefile
 TEST_SOURCES = tests/unit/Asset_test.cc \
-               tests/unit/MascotData_test.cc
+               tests/unit/MascotData_test.cc \
+               tests/unit/MatrixClient_test.cc
 
 TEST_OBJECTS = $(patsubst %.cc,%.o,$(TEST_SOURCES))
 
@@ -177,26 +213,11 @@ test: shijima-qt$(EXE) $(TEST_OBJECTS)
 	$(CXX) -o test_runner $(TEST_OBJECTS) shijima-qt.a \
 		$(TARGET_LDFLAGS) $(LDFLAGS) -lgtest -lgtest_main
 	./test_runner
+
+clean::
+	rm -f $(TEST_OBJECTS) test_runner
 ```
-
-## Critical Areas Requiring Test Coverage
-
-1. **HTTP API** (`ShijimaHttpApi.cc`) — REST endpoints, JSON parsing, error responses
-2. **Mascot Loading** (`MascotData.cc`, `AssetLoader.cc`) — Archive extraction, XML parsing, asset caching
-3. **CLI** (`cli.cc`) — Argument parsing, API client calls, error handling
-4. **Platform Abstraction** (`Platform/`) — KWin/DBus/GNOME backends, window tracking
-5. **ShijimaManager** (`ShijimaManager.cc`) — Mascot lifecycle, multi-screen handling, tick synchronization
-6. **Asset** (`Asset.cc`) — Image trimming, alpha mask generation
-
-## Known Testing Challenges
-
-- **Qt dependency** — Requires `QApplication` instance for most Qt operations
-- **Platform-specific code** — Linux/macOS/Windows backends need separate test environments
-- **Submodule dependencies** — `libshijima` and `libshimejifinder` must be initialized
-- **GUI components** — `ShijimaWidget` rendering tests require display or virtual framebuffer
-- **HTTP server** — `ShijimaHttpApi` binds to port 32456; tests need port isolation
-- **Singleton pattern** — `ShijimaManager::defaultManager()` and `AssetLoader::defaultLoader()` require `finalize()` calls between tests
 
 ---
 
-*Testing analysis: 2026-04-19*
+*Testing analysis: 2026/04/26*

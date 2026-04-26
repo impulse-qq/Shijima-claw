@@ -1,223 +1,356 @@
 # Coding Conventions
 
-**Analysis Date:** 2026-04-19
+**Analysis Date:** 2026/04/26
 
-## Naming Patterns
+## Language and Standards
+
+**Primary Language:** C++17
+- Standard flags defined in `common.mk`: `-std=c++17 -Wall -fPIC`
+- Release: `-O3 -DNDEBUG`
+- Debug: `-g -O0`
+
+**Build System:** GNU Make (Makefile-based)
+- `common.mk` provides shared build configuration
+- Submodules (`libshijima`, `libshimejifinder`) use CMake internally
+
+**Framework:** Qt 6 (with Qt5 fallback detection via `QMAKE ?= qmake-qt5`)
+
+## File Organization
+
+**Header Format:**
+Every `.cc` and `.hpp` file begins with a GPL v3 license block:
+```cpp
+// 
+// Shijima-Qt - Cross-platform shimeji simulation app for desktop
+// Copyright (C) 2025 pixelomer
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+//
+```
+
+**Source Extensions:**
+- `.cc` for C++ implementation (not `.cpp` or `.cxx`)
+- `.hpp` for C++ headers
+- `.mm` for Objective-C++ (macOS platform code)
+
+**Includes Order (observed pattern):**
+1. Local headers (matching `.hpp` first)
+2. Standard library headers (`<cmath>`, `<exception>`, `<filesystem>`, `<string>`)
+3. Qt headers (`<QWidget>`, `<QPainter>`, `<QJsonDocument>`)
+4. External library headers (`<httplib.h>`, `<shijima/shijima.hpp>`, `<shimejifinder/utils.hpp>`)
+5. Platform headers (`"Platform/Platform.hpp"`)
+
+## Naming Conventions
 
 **Files:**
-- Source files: `.cc` (not `.cpp` or `.cxx`)
-- Headers: `.hpp` (not `.h`)
-- Objective-C++: `.mm` (macOS platform code)
-- PascalCase for class files: `ShijimaManager.cc`, `AssetLoader.hpp`, `SoundEffectManager.cc`
-- Platform-specific files: `ActiveWindowObserver.cc`, `GNOME.cc`, `KWin.cc`
+- PascalCase matching class name: `ShijimaManager.cc`, `MatrixClient.cc`, `AssetLoader.hpp`
+- Platform files: `ActiveWindowObserver.cc`, `cli.cc`
 
-**Classes:**
-- PascalCase: `ShijimaManager`, `ShijimaWidget`, `AssetLoader`, `MascotData`
-- No prefix convention (not `CShijimaManager` or similar)
+**Classes:** PascalCase
+- Examples: `ShijimaManager`, `MatrixClient`, `AssetLoader`, `ForcedProgressDialog`, `ShimejiInspectorDialog`
 
-**Member Variables:**
-- `m_` prefix with camelCase: `m_mascotTimer`, `m_loadedMascots`, `m_sandboxWidget`
-- Examples from `ShijimaManager.hpp`:
-  ```cpp
-  int m_mascotTimer = -1;
-  bool m_allowClose = false;
-  QMap<QString, MascotData *> m_loadedMascots;
-  std::mutex m_mutex;
-  ```
+**Member Variables:** `m_` prefix + camelCase
+- Examples: `m_mascots`, `m_running`, `m_lastError`, `m_syncThread`, `m_connected`, `m_windowedMode`
+- Boolean members often use adjectives: `m_visible`, `m_allowClose`, `m_firstShow`
+- Thread-safe members use `std::atomic`: `m_running.load()`, `m_connected.store()`
 
-**Functions:**
-- camelCase: `spawn()`, `killAll()`, `loadData()`, `updateEnvironment()`
-- No Hungarian notation on function names
+**Methods/Functions:** camelCase
+- Examples: `loadConfig()`, `startSyncLoop()`, `tick()`, `spawnClicked()`, `acquireLock()`
+- Slot methods: `importAction()`, `deleteAction()`, `quitAction()`, `buildToolbar()`
 
-**Constants/Macros:**
-- UPPER_SNAKE_CASE: `SHIJIMAQT_SUBTICK_COUNT`
-- Defined with `#define` or `static const`
+**Constants/Macros:** UPPER_SNAKE_CASE
+- Examples: `SHIJIMAQT_SUBTICK_COUNT`, `SHIJIMA_USE_QTMULTIMEDIA`
+- Defined with `#define` or `static const int`
 
 **Namespaces:**
-- `Platform::` for platform abstraction layer (`Platform::ActiveWindowObserver`)
-- `shijima::` for libshijima submodule (`shijima::mascot::manager`)
-- `shijima::math::` for math types (`shijima::math::vec2`)
+- `shijima::` for libshijima mascot engine
+- `shijima::mascot::` for mascot-related types
+- `Platform::` for platform abstraction layer
 
-## Code Style
+## Indentation and Formatting
 
-**Formatting:**
-- No `.clang-format`, `.editorconfig`, or `.prettierrc` present
-- 4-space indentation observed consistently
-- Braces: Allman style for class definitions, K&R for functions
-- Line length: No enforced limit; long lines observed in `ShijimaManager.cc`
+**Indentation:** 4 spaces (no tabs)
 
-**Header Guards:**
-- `#pragma once` exclusively (no `#ifndef` guards)
-- Every `.hpp` file starts with `#pragma once`
+**Braces:** K&R style for functions, same-line for control structures
+```cpp
+void MatrixClient::syncLoop() {
+    while (m_running.load()) {
+        if (!m_connected.load()) {
+            std::this_thread::sleep_for(std::chrono::seconds(5));
+            continue;
+        }
+        // ...
+    }
+}
+```
 
-**License Header:**
-- GPL-3.0 license block at top of every source file:
-  ```cpp
-  // 
-  // Shijima-Qt - Cross-platform shimeji simulation app for desktop
-  // Copyright (C) 2025 pixelomer
-  // ...
-  ```
+**Control Flow:** Always braces for single statements
+```cpp
+if (m_accessToken.isEmpty()) {
+    m_lastError = "No access token configured";
+    emit errorOccurred(m_lastError);
+    return;
+}
+```
 
-**Include Organization:**
-1. Standard library headers (`<string>`, `<vector>`, `<memory>`)
-2. Qt headers (`<QString>`, `<QImage>`, `<QWidget>`)
-3. Submodule headers (`<shijima/mascot/manager.hpp>`)
-4. Project headers with quotes (`"Asset.hpp"`, `"ShijimaWidget.hpp"`)
-- No strict ordering enforced; mixed ordering observed in some files
-- Duplicate includes exist (e.g., `<QDesktopServices>` imported 3 times in `ShijimaManager.cc`)
-
-**Build System:**
-- Makefile-based (no CMake for main project, submodules use CMake)
-- `common.mk` shared configuration
-- C++17 standard: `-std=c++17`
-- Warning flags: `-Wall`
-- Release mode: `-O3 -flto -DNDEBUG`
-- Debug mode: `-g -O0`
-- Platform detection via `uname -s` and compiler prefix
-
-## Import Organization
-
-**Order (observed, not enforced):**
-1. Own header first (`.cc` includes matching `.hpp`)
-2. Standard library headers
-3. Qt headers
-4. External library headers (`<httplib.h>`, `<shijima/...>`)
-5. Project headers (quoted includes)
-
-**Path Aliases:**
-- None used; all includes are relative paths
-- Submodule includes use angle brackets: `<shijima/mascot/manager.hpp>`
-- Project includes use quotes: `"Asset.hpp"`
+**Member Initialization:** Constructor initializer lists with comma-separated members
+```cpp
+MatrixClient::MatrixClient(QObject *parent)
+    : QObject(parent)
+    , m_syncThread(nullptr)
+    , m_running(false)
+    , m_connected(false)
+    , m_nextBatch()
+    , m_retryCount(0)
+{
+}
+```
 
 ## Error Handling
 
-**Exception Strategy:**
-- Standard exceptions: `std::runtime_error`, `std::invalid_argument`, `std::system_error`
-- Custom exceptions: `DBusCallError`, `DBusReturnError` (in `Platform/Linux/DBus.hpp`)
-- Exceptions used for fatal/unexpected conditions only
-
 **Patterns:**
-- Catch by const reference: `catch (std::exception &ex)`
-- Error logging to `std::cerr` with context:
-  ```cpp
-  catch (std::exception &ex) {
-      std::cerr << "couldn't load mascot: " << name.toStdString() << std::endl;
-      std::cerr << ex.what() << std::endl;
-  }
-  ```
-- HTTP API returns error JSON objects with `"error"` key:
-  ```cpp
-  QJsonObject obj;
-  obj["error"] = "400 Bad Request";
-  res.status = 400;
-  ```
-- `noexcept` used sparingly (only on `ShijimaManager::import()`)
 
-**Return Values:**
-- `nullptr` for optional pointer returns
-- Empty containers (`{}`, `{}`) for collection returns
-- `std::optional` for nullable value returns
-- `EXIT_SUCCESS`/`EXIT_FAILURE` for CLI exit codes
+1. **Return codes with error member:** Methods return `bool` and store error in `m_lastError`
+   - `MatrixClient::loadConfig()` returns `false` on error, `m_lastError` holds message
+   ```cpp
+   if (!file.open(QIODevice::ReadOnly)) {
+       m_lastError = "Failed to open config: " + path;
+       return false;
+   }
+   ```
+
+2. **Exception throwing:** For unrecoverable programmer errors
+   ```cpp
+   throw std::runtime_error("loadData() called with invalid data");
+   throw std::runtime_error("Impossible condition: New mascot name is incorrect");
+   if (target->m_dragTargetPt != nullptr) {
+       throw std::runtime_error("target widget being dragged by multiple widgets");
+   }
+   ```
+
+3. **std::exception catching:** In import/processing code with context logging
+   ```cpp
+   catch (std::exception &ex) {
+       std::cerr << "couldn't load mascot: " << name.toStdString() << std::endl;
+       std::cerr << ex.what() << std::endl;
+   }
+   ```
+
+4. **noexcept for guaranteed-failure operations:** Used on `ShijimaManager::import()`
+   ```cpp
+   std::set<std::string> import(QString const& path) noexcept;
+   ```
+
+**Qt Error Signals:**
+```cpp
+emit errorOccurred(m_lastError);
+```
+
+**HTTP API Error Responses:**
+```cpp
+QJsonObject obj;
+obj["error"] = "400 Bad Request";
+res.status = 400;
+```
 
 ## Logging
 
-**Framework:** None — raw `std::cout`/`std::cerr` throughout
+**Console Output:** `std::cout` for info, `std::cerr` for errors
+```cpp
+std::cout << "Loaded mascot: " << data->name().toStdString() << std::endl;
+std::cout << "Mascots path: " << m_mascotsPath.toStdString() << std::endl;
+std::cerr << "warning: sandboxWidget is not initialized" << std::endl;
+std::cerr << "import failed: " << ex.what() << std::endl;
+```
 
-**Patterns:**
-- Status/info to `std::cout`:
-  ```cpp
-  std::cout << "Loaded mascot: " << data->name().toStdString() << std::endl;
-  std::cout << "Mascots path: " << m_mascotsPath.toStdString() << std::endl;
-  ```
-- Errors/warnings to `std::cerr`:
-  ```cpp
-  std::cerr << "warning: sandboxWidget is not initialized" << std::endl;
-  std::cerr << "import failed: " << ex.what() << std::endl;
-  ```
-- HTTP API logging via custom logger:
-  ```cpp
-  m_server->set_logger([](const Request &req, const Response &) {
-      std::cout << req.method << " " << req.path << std::endl;
-  });
-  ```
-- CLI uses `cout`/`cerr` macros for platform-specific redirection (Windows uses MessageBox)
-- No structured logging, no log levels, no timestamps
+**HTTP API Logging:**
+```cpp
+m_server->set_logger([](const Request &req, const Response &) {
+    std::cout << req.method << " " << req.path << std::endl;
+});
+```
 
-## Comments
+**No structured logging framework** - raw `std::cout`/`std::cerr` usage
+**No log levels, no timestamps, no structured formatting**
 
-**When to Comment:**
-- FIXME comments for known issues: `//FIXME: refresh only changed items`
-- URL references for sourced algorithms: `// https://stackoverflow.com/questions/...`
-- Platform-specific code commented with `#if defined()` blocks
-- Inline comments rare; self-documenting code preferred
+## Comment Style
 
-**JSDoc/TSDoc:**
-- Not applicable (C++ project)
-- No Doxygen-style comments observed
-- No `///` or `/** */` documentation blocks
+**File Headers:** GPL license block (required on every file)
 
-## Function Design
+**FIXME Comments:** Mark known issues
+```cpp
+//FIXME: refresh only changed items
+//FIXME: is this position correct?
+```
 
-**Size:**
-- Wide range: from 1-line accessors to 200+ line methods (`buildToolbar()` at ~180 lines)
-- No enforced maximum
+**Algorithm References:** Stack Overflow links when applicable
+```cpp
+// https://stackoverflow.com/questions/34135624/-/54029758#54029758
+static void dispatchToMainThread(std::function<void()> callback) {
+```
 
-**Parameters:**
-- `const&` for non-trivial types: `QString const&`, `std::string const&`
-- Raw pointers for nullable references: `QWidget *parent = nullptr`
-- `std::function` for callbacks: `std::function<void(ShijimaManager *)>`
-- `std::initializer_list` for variadic-style args: `ArgumentList(std::initializer_list<Argument>)`
+**Inline Comments:** Sparse usage, self-documenting code preferred
+```cpp
+// Determine the frame anchor within the window
+if (isMirroredRender()) {
+```
 
-**Return Values:**
-- `const&` for internal state accessors
-- Raw pointers for factory methods: `static ShijimaManager *defaultManager()`
-- `std::unique_lock<std::mutex>` for RAII lock acquisition
-- `void` for mutating operations
+**No Doxygen/Javadoc style** - no `///` or `/** */` documentation blocks observed
 
-## Module Design
-
-**Exports:**
-- Each `.cc`/`.hpp` pair represents one class or module
-- No barrel files or re-export patterns
-- Public API via class methods, not free functions (except CLI)
+## Code Organization Patterns
 
 **Singleton Pattern:**
-- `defaultManager()` / `finalize()` pattern for global access:
-  ```cpp
-  static ShijimaManager *m_defaultManager = nullptr;
-  ShijimaManager *ShijimaManager::defaultManager() {
-      if (m_defaultManager == nullptr) {
-          m_defaultManager = new ShijimaManager;
-      }
-      return m_defaultManager;
-  }
-  ```
-- Same pattern for `AssetLoader::defaultLoader()`
+```cpp
+static ShijimaManager *m_defaultManager = nullptr;
 
-**Platform Abstraction:**
-- `Platform/` directory with OS-specific subdirectories
-- Common interface in `Platform/Platform.hpp`, `Platform/ActiveWindowObserver.hpp`
-- Private implementations in `Platform/{Linux,macOS,Windows,Stub}/`
-- Build system selects correct backend at compile time
+ShijimaManager *ShijimaManager::defaultManager() {
+    if (m_defaultManager == nullptr) {
+        m_defaultManager = new ShijimaManager;
+    }
+    return m_defaultManager;
+}
 
-**Qt Signal/Slot Connections:**
-- Lambda-based connections preferred:
-  ```cpp
-  connect(action, &QAction::triggered, [this](){
-      QDesktopServices::openUrl(QUrl::fromLocalFile(m_mascotsPath));
-  });
-  ```
-- Traditional slot connections for class methods:
-  ```cpp
-  connect(action, &QAction::triggered, this, &ShijimaManager::importAction);
-  ```
+void ShijimaManager::finalize() {
+    if (m_defaultManager != nullptr) {
+        delete m_defaultManager;
+        m_defaultManager = nullptr;
+    }
+}
+```
 
-**Macros:**
-- `#define` used sparingly
-- `addPreset` macro in `buildToolbar()` for repetitive scale preset creation
-- `cout`/`cerr` macros in `cli.cc` for platform-specific stream redirection
+**Thread Dispatch to Main Thread:**
+```cpp
+static void dispatchToMainThread(std::function<void()> callback) {
+    QTimer *timer = new QTimer;
+    timer->moveToThread(qApp->thread());
+    timer->setSingleShot(true);
+    QObject::connect(timer, &QTimer::timeout, [timer, callback]() {
+        callback();
+        timer->deleteLater();
+    });
+    QMetaObject::invokeMethod(timer, "start", Qt::QueuedConnection, Q_ARG(int, 0));
+}
+```
+
+**RAII Lock Pattern:**
+```cpp
+std::unique_lock<std::mutex> ShijimaManager::acquireLock() {
+    return std::unique_lock<std::mutex> { m_mutex };
+}
+```
+
+**Lambda Signal Connections:**
+```cpp
+connect(action, &QAction::triggered, [this](bool checked){
+    for (auto &env : m_env) {
+        env->allows_breeding = checked;
+    }
+    m_settings.setValue(key, QVariant::fromValue(checked));
+});
+```
+
+**Qt Queued Connection for Thread-Safe Signals:**
+```cpp
+QMetaObject::invokeMethod(this, [this, sender, body]() {
+    emit messageReceived(sender, body, m_roomId);
+}, Qt::QueuedConnection);
+```
+
+## Qt-Specific Patterns
+
+**MOC Processing:** Files with `Q_OBJECT` require MOC generation
+- `MatrixClient.hh` generates `MatrixClient.moc`
+- Rule in `common.mk`:
+```make
+MatrixClient.moc: MatrixClient.hh
+    $(MOC) MatrixClient.hh -o MatrixClient.moc
+```
+- Dependencies tracked: `MatrixClient.o: MatrixClient.cc MatrixClient.moc`
+- Include at end of `.cc` file: `#include "MatrixClient.moc"`
+
+**Header Guards:** `#pragma once` exclusively
+```cpp
+#pragma once
+```
+
+**Signal/Slot Connections:** Using new Qt5+ syntax
+```cpp
+connect(action, &QAction::triggered, this, &ShijimaManager::quitAction);
+connect(&m_listWidget, &QListWidget::itemDoubleClicked,
+    this, &ShijimaManager::itemDoubleClicked);
+```
+
+**Lambda Connections:** Preferred for capturing local state
+```cpp
+connect(action, &QAction::triggered, [this](){
+    QDesktopServices::openUrl(QUrl::fromLocalFile(m_mascotsPath));
+});
+```
+
+**Thread-safe Atomic Variables:**
+```cpp
+std::atomic<bool> m_running;
+std::atomic<bool> m_connected;
+// Usage:
+if (m_running.load()) { ... }
+```
+
+**QSettings for Persistent Configuration:**
+```cpp
+m_settings("pixelomer", "Shijima-Qt")
+// Usage:
+bool initial = m_settings.value(key, QVariant::fromValue(true)).toBool();
+m_settings.setValue(key, QVariant::fromValue(checked));
+```
+
+## Platform Abstraction
+
+**Directory Structure:**
+```
+Platform/
+├── Linux/
+│   ├── DBus.hpp
+│   ├── GNOME.cc
+│   ├── KWin.cc
+│   └── ...
+├── macOS/
+├── Windows/
+├── Stub/
+├── Platform.hpp
+├── PlatformWidget.hpp
+└── ActiveWindowObserver.hpp
+```
+
+**Platform-Specific Compilation:**
+```cpp
+#if defined(__APPLE__)
+    // macOS code
+#elif defined(_WIN32)
+    // Windows code
+#else
+    // Linux code
+#endif
+```
+
+**Build System Platform Detection:**
+```makefile
+UNAME_S := $(shell uname -s)
+ifeq ($(UNAME_S),Linux)
+    PLATFORM := Linux
+endif
+```
 
 ---
 
-*Convention analysis: 2026-04-19*
+*Convention analysis: 2026/04/26*
