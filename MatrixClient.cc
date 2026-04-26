@@ -24,9 +24,27 @@
 #include <QJsonArray>
 #include <QFile>
 #include <QDir>
+#include <QDateTime>
 #include <iostream>
 
 using namespace httplib;
+
+static QString timestamp() {
+    return QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss.zzz");
+}
+
+static void matrixLog(const QString& level, const QString& msg) {
+    static QFile file("/tmp/shijima-debug.log");
+    if (!file.isOpen()) {
+        file.open(QIODevice::WriteOnly | QIODevice::Append | QIODevice::Text);
+    }
+    QTextStream out(&file);
+    out << "[" << timestamp() << "] [" << level << "] " << msg << "\n";
+    out.flush();
+}
+
+#define MATRIX_LOG(msg) matrixLog("INFO", msg)
+#define MATRIX_ERR(msg) matrixLog("ERROR", msg)
 
 MatrixClient::MatrixClient(QObject *parent)
     : QObject(parent)
@@ -78,19 +96,24 @@ bool MatrixClient::loadConfig(const QString &path) {
 }
 
 void MatrixClient::login() {
+    MATRIX_LOG(QString("login() called, token present: ") + (m_accessToken.isEmpty() ? "no" : "yes"));
     if (m_accessToken.isEmpty()) {
         m_lastError = "No access token configured";
+        MATRIX_ERR("Login failed: " + m_lastError);
         emit errorOccurred(m_lastError);
         return;
     }
     m_connected = true;
+    MATRIX_LOG("login() succeeded, connected=true");
     emit connectedChanged(true);
 }
 
 void MatrixClient::startSyncLoop() {
     if (m_running.load()) {
+        MATRIX_LOG("startSyncLoop() called but already running");
         return;
     }
+    MATRIX_LOG("startSyncLoop() starting sync thread");
     m_running = true;
     m_syncThread = new std::thread([this]() { syncLoop(); });
 }
@@ -105,8 +128,10 @@ void MatrixClient::stopSyncLoop() {
 }
 
 void MatrixClient::sendMessage(const QString &text) {
-    if (!m_connected.load() || m_accessToken.isEmpty()) {
-        emit errorOccurred("Not connected");
+    MATRIX_LOG(QString("sendMessage() called, text=\"" + text + "\""));
+    if (m_accessToken.isEmpty()) {
+        MATRIX_ERR("sendMessage() failed: No access token");
+        emit errorOccurred("No access token");
         return;
     }
 
@@ -125,28 +150,30 @@ void MatrixClient::sendMessage(const QString &text) {
     content["msgtype"] = "m.text";
     content["body"] = text;
 
-    QJsonObject message;
-    message["content"] = content;
-    message["type"] = "m.room.message";
-
-    QJsonDocument doc(message);
+    QJsonDocument doc(content);
     std::string body = doc.toJson(QJsonDocument::Compact).toStdString();
 
+    MATRIX_LOG(QString("sendMessage() PUT ") + QString::fromStdString(path) + " body=" + QString::fromStdString(body));
     auto res = cli.Put(path.c_str(), headers, body, "application/json");
     if (!res || res->status != 200) {
         std::string err = res ? res->body : "Connection failed";
+        MATRIX_ERR("sendMessage() failed: " + QString::fromStdString(err));
         m_lastError = QString::fromStdString(err);
         emit errorOccurred(m_lastError);
+    } else {
+        MATRIX_LOG("sendMessage() success, event_id=" + QString::fromStdString(res->body));
     }
 }
 
 void MatrixClient::syncLoop() {
+    MATRIX_LOG(QString("syncLoop() started, homeserver=") + m_homeserver + " roomId=" + m_roomId);
     Client cli(m_homeserver.toStdString());
     Headers headers;
     headers.emplace("Authorization", "Bearer " + m_accessToken.toStdString());
 
     while (m_running.load()) {
         if (!m_connected.load()) {
+            MATRIX_LOG("syncLoop() waiting (m_connected=false)");
             std::this_thread::sleep_for(std::chrono::seconds(5));
             continue;
         }
@@ -156,21 +183,27 @@ void MatrixClient::syncLoop() {
             path += "&since=" + m_nextBatch.toStdString();
         }
 
+        MATRIX_LOG(QString("syncLoop() GET ") + QString::fromStdString(path));
         auto res = cli.Get(path.c_str(), headers);
         if (!res || res->status != 200) {
+            std::string err = res ? ("HTTP " + std::to_string(res->status)) : "no response";
+            MATRIX_ERR(QString("syncLoop() failed: ") + QString::fromStdString(err));
             m_connected = false;
             emit connectedChanged(false);
             m_retryCount++;
             int delay = std::min(60, 1 << m_retryCount);
+            MATRIX_LOG(QString("syncLoop() retry in ") + QString::number(delay) + "s (retry #" + QString::number(m_retryCount) + ")");
             std::this_thread::sleep_for(std::chrono::seconds(delay));
             continue;
         }
 
         m_retryCount = 0;
+        MATRIX_LOG(QString("syncLoop() got response, status=200, body_len=") + QString::number(res->body.size()));
         QJsonParseError error;
         QJsonDocument doc = QJsonDocument::fromJson(
             QByteArray::fromStdString(res->body), &error);
         if (error.error != QJsonParseError::NoError) {
+            MATRIX_ERR(QString("syncLoop() JSON parse error: ") + error.errorString());
             std::this_thread::sleep_for(std::chrono::seconds(1));
             continue;
         }
@@ -180,15 +213,25 @@ void MatrixClient::syncLoop() {
 
         QJsonObject room = root.value("rooms").toObject();
         QJsonObject join = room.value("join").toObject();
+        MATRIX_LOG(QString("syncLoop() rooms.join count=") + QString::number(join.size()) + " my roomId=[" + m_roomId + "]");
+        for (auto it = join.begin(); it != join.end(); ++it) {
+            MATRIX_LOG(QString("syncLoop() room ID in response: [") + it.key() + "]");
+        }
         if (join.contains(m_roomId)) {
+            MATRIX_LOG("syncLoop() Found my room! Processing events...");
             QJsonObject roomData = join.value(m_roomId).toObject();
             QJsonArray events = roomData.value("timeline").toObject()
                 .value("events").toArray();
+            MATRIX_LOG(QString("syncLoop() timeline events count=") + QString::number(events.size()));
             for (const QJsonValue &ev : events) {
                 QJsonObject event = ev.toObject();
+                QString evType = event.value("type").toString();
+                QString evSender = event.value("sender").toString();
+                MATRIX_LOG(QString("syncLoop() event: type=") + evType + " sender=" + evSender);
                 if (isValidEvent(event)) {
                     QString sender = extractSender(event);
                     QString body = extractBody(event);
+                    MATRIX_LOG(QString("syncLoop() valid event: sender=") + sender + " body=" + body);
                     if (!sender.isEmpty() && !body.isEmpty()) {
                         QMetaObject::invokeMethod(this, [this, sender, body]() {
                             emit messageReceived(sender, body, m_roomId);

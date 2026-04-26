@@ -129,6 +129,7 @@ private:
     std::condition_variable m_tickCallbackCompletion;
     std::list<std::function<void(ShijimaManager *)>> m_tickCallbacks;
     MatrixClient *m_matrixClient = nullptr;
+    bool m_matrixMessageConnected = false;
 public:
     MatrixClient *matrixClient() { return m_matrixClient; }
     void showMatrixSendDialog();

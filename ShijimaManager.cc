@@ -760,18 +760,24 @@ ShijimaManager::ShijimaManager(QWidget *parent):
     m_matrixClient = new MatrixClient(this);
 
     QString configPath = QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation) + "/matrix.json";
+    std::cerr << "[ShijimaManager] Matrix config path: " << configPath.toStdString() << std::endl;
     if (QFile::exists(configPath)) {
+        std::cerr << "[ShijimaManager] Config file exists, loading..." << std::endl;
         if (m_matrixClient->loadConfig(configPath)) {
+            std::cerr << "[ShijimaManager] Config loaded, calling login()..." << std::endl;
             m_matrixClient->login();
+            std::cerr << "[ShijimaManager] login() done, calling startSyncLoop()..." << std::endl;
             m_matrixClient->startSyncLoop();
+            std::cerr << "[ShijimaManager] startSyncLoop() done" << std::endl;
 
             // Connect Matrix messages to first mascot bubble
-            if (!mascots().empty()) {
+            if (!mascots().empty() && !m_matrixMessageConnected) {
                 ShijimaWidget *firstMascot = mascots().front();
                 connect(m_matrixClient, &MatrixClient::messageReceived,
                     [firstMascot](const QString &, const QString &body, const QString &){
                         firstMascot->showMessageBubble(body);
                     });
+                m_matrixMessageConnected = true;
             }
         }
     }
@@ -1114,6 +1120,17 @@ ShijimaWidget *ShijimaManager::spawn(std::string const& name) {
     m_mascots.push_back(shimeji);
     m_mascotsById[shimeji->mascotId()] = shimeji;
     env->reset_scale();
+
+    // Connect Matrix messages to first mascot bubble if not already connected
+    if (m_matrixClient != nullptr && !m_matrixMessageConnected) {
+        ShijimaWidget *firstMascot = m_mascots.front();
+        connect(m_matrixClient, &MatrixClient::messageReceived,
+            [firstMascot](const QString &, const QString &body, const QString &){
+                firstMascot->showMessageBubble(body);
+            });
+        m_matrixMessageConnected = true;
+    }
+
     return shimeji;
 }
 
