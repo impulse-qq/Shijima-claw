@@ -2,10 +2,10 @@
 
 ## Current Position
 
-**Phase:** Phase 1 (Build Fix) — Complete
-**Plan:** .planning/ROADMAP.md
-**Status:** All requirements verified, executable builds and runs
-**Last activity:** 2026-04-25 — Phase 1 completed, milestone v0.1 ready to close
+**Phase:** Phase 2 (Matrix send/receive message functionality) — Complete
+**Plan:** .planning/phases/02-matrix-send-receive-message-functionality/02-01-PLAN.md
+**Status:** Phase 2 complete — sendMatrixMessage wired to MatrixClient, cross-platform config path, timestamp-based txnId
+**Last activity:** 2026-04-26 — Phase 2 completed, MATRIX-01/02/03 implemented
 
 ## Project Reference
 

@@ -9,7 +9,7 @@
 | # | Phase | Goal | Requirements | Success Criteria | Status |
 |---|-------|------|--------------|-----------------|--------|
 | 1 | Build Fix | Fix linker errors and verify launch | FIX-01, FIX-02, FIX-03, FIX-04 | 4 | Complete |
-| 2 | Matrix send/receive message functionality | Route sendMatrixMessage through MatrixClient; add error feedback | MATRIX-01, MATRIX-02, MATRIX-03 | TBD | Planned |
+| 2 | Matrix send/receive message functionality | Route sendMatrixMessage through MatrixClient; add error feedback | MATRIX-01, MATRIX-02, MATRIX-03 | 2 | Complete |
 
 ## Phase 2: Matrix send/receive message functionality
 
@@ -25,8 +25,8 @@
 **Plans:** 2 plans
 
 Plans:
-- [ ] 02-01-PLAN.md — Wire sendMatrixMessage to MatrixClient::sendMessage() with error handling
-- [ ] 02-02-PLAN.md — Fix config path (QStandardPaths) and txnId collision
+- [x] 02-01-PLAN.md — Wire sendMatrixMessage to MatrixClient::sendMessage() with error handling
+- [x] 02-02-PLAN.md — Fix config path (QStandardPaths) and txnId collision
 
 ---
 
