@@ -87,6 +87,10 @@ ShijimaContextMenu::ShijimaContextMenu(ShijimaWidget *parent)
     action = addAction("Send message");
     connect(action, &QAction::triggered, this, &ShijimaContextMenu::showSendMessageDialog);
 
+    // Assign to room
+    action = addAction("分配到房间...");
+    connect(action, &QAction::triggered, this, &ShijimaContextMenu::showAssignRoomDialog);
+
     // Dismiss
     action = addAction("Dismiss");
     connect(action, &QAction::triggered, parent, &ShijimaWidget::closeAction);
@@ -113,5 +117,15 @@ void ShijimaContextMenu::showSendMessageDialog() {
         "Send Message", "Enter your message:", "", &ok);
     if (ok && !text.isEmpty()) {
         shijimaParent()->sendMatrixMessage(text);
+    }
+}
+
+void ShijimaContextMenu::showAssignRoomDialog() {
+    bool ok;
+    QString roomId = QInputDialog::getText(parentWidget(),
+        "分配到房间", "输入 Room ID:", QLineEdit::Normal,
+        shijimaParent()->m_matrixRoomId, &ok);
+    if (ok && !roomId.isEmpty()) {
+        shijimaParent()->setMatrixRoomId(roomId);
     }
 }

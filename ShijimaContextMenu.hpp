@@ -20,6 +20,7 @@
 
 #include <QMenu>
 #include <QInputDialog>
+#include <QLineEdit>
 #include "ShijimaWidget.hpp"
 
 class QCloseEvent;
@@ -35,4 +36,5 @@ protected:
     void closeEvent(QCloseEvent *) override;
 private slots:
     void showSendMessageDialog();
+    void showAssignRoomDialog();
 };
