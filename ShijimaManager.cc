@@ -778,10 +778,12 @@ ShijimaManager::ShijimaManager(QWidget *parent):
                             << " body=" << body.toStdString() << " roomId=" << roomId.toStdString() << std::endl;
 
                         bool delivered = false;
+                        auto lock = acquireLock();
                         for (auto mascot : m_mascots) {
                             if (mascot->matrixRoomId() == roomId) {
                                 mascot->showMessageBubble(body);
                                 delivered = true;
+                                break;
                             }
                         }
                         if (!delivered) {
@@ -1145,10 +1147,12 @@ ShijimaWidget *ShijimaManager::spawn(std::string const& name) {
                     << " body=" << body.toStdString() << " roomId=" << roomId.toStdString() << std::endl;
 
                 bool delivered = false;
+                auto lock = acquireLock();
                 for (auto mascot : m_mascots) {
                     if (mascot->matrixRoomId() == roomId) {
                         mascot->showMessageBubble(body);
                         delivered = true;
+                        break;
                     }
                 }
                 if (!delivered) {
