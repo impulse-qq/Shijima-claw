@@ -152,7 +152,11 @@ void MatrixClient::sendMessage(const QString &text) {
     content["msgtype"] = "m.text";
     content["body"] = text;
 
-    QJsonDocument doc(content);
+    QJsonObject wrapper;
+    wrapper["content"] = content;
+    wrapper["type"] = "m.room.message";
+
+    QJsonDocument doc(wrapper);
     std::string body = doc.toJson(QJsonDocument::Compact).toStdString();
 
     MATRIX_LOG(QString("sendMessage() PUT ") + QString::fromStdString(path) + " body=" + QString::fromStdString(body));
