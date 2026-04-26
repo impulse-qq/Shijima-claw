@@ -75,14 +75,15 @@ Shijima-Qt supports KDE Plasma 6 and GNOME 46 in both Wayland and X11. To get th
 
 Only tested on Windows 11. May also work on Windows 10. Window tracking is supported and no extra actions should be necessary to run Shijima-Qt.
 
-## Matrix Integration
+## Matrix 集成
 
-Shijima-Qt supports Matrix messaging integration. When configured, your desktop mascot can:
+Shijima-Qt 支持 Matrix 消息集成。配置完成后，你的桌面宠物可以：
 
-- **Receive messages** from a Matrix room and display them as speech bubbles
-- **Send messages** to a Matrix room via the right-click context menu
+- **接收消息** — 从 Matrix 房间接收消息并显示为气泡
+- **发送消息** — 通过右键菜单向 Matrix 房间发送消息
+- **多房间支持** — 每个宠物可以分配到不同的 Matrix 房间
 
-### Configuration
+### 配置 matrix.json
 
 Create the config file at `~/.config/shijima-qt/matrix.json`:
 
@@ -90,53 +91,75 @@ Create the config file at `~/.config/shijima-qt/matrix.json`:
 {
   "homeserver": "https://matrix.org",
   "userId": "@yourusername:matrix.org",
-  "accessToken": "syt_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "username": "yourusername",
+  "password": "yourpassword",
   "roomId": "!xxxxxxxxxxxxxxxxxxx:matrix.org"
 }
 ```
 
-| Field | Description |
-|-------|-------------|
-| `homeserver` | Your Matrix homeserver URL (e.g. `https://matrix.org`) |
-| `userId` | Your full Matrix user ID (e.g. `@alice:matrix.org`) |
-| `accessToken` | Your Matrix access token for authentication |
-| `roomId` | The room ID to join (e.g. `!abc123:matrix.org`) |
+| 字段 | 描述 |
+|------|------|
+| `homeserver` | Matrix 服务器地址（如 `https://matrix.org`） |
+| `userId` | 你的 Matrix 用户 ID（如 `@alice:matrix.org`） |
+| `username` | Matrix 用户名 |
+| `password` | Matrix 密码 |
+| `roomId` | 默认房间 ID（如 `!abc123:matrix.org`） |
 
-### Getting Your Access Token
+### 每个宠物独立房间
 
-**Via Element (Web/Desktop):**
-1. Open Element and log in
-2. Go to **Settings** → **Help & About** → **Advanced**
-3. Click **Access Token** → copy the token
+可以为每个桌面宠物分配不同的 Matrix 房间，实现消息的独立收发：
 
-**Via curl:**
+1. **右键点击宠物** → **分配到房间...**
+2. 输入 Room ID（如 `!xxxxxxxxxxxx:matrix.org`）
+3. 该宠物将只接收分配房间的消息，并从该房间发送消息
+
+**消息路由规则：**
+- 如果有宠物被分配到消息所在的房间 → 该宠物显示气泡
+- 如果没有宠物被分配到该房间 → 所有未分配房间的宠物都显示气泡（fallback）
+
+**发送消息：**
+- 右键点击宠物 → **发送消息...** → 消息会发送到该宠物分配的房间
+- 如果宠物未分配房间，会显示 `[未分配房间]` 提示
+
+**取消分配：**
+- 右键点击宠物 → **分配到房间...** → 清空输入框后确认
+
+### 获取 Access Token
+
+**通过 Element（网页/桌面）：**
+1. 打开 Element 并登录
+2. 进入 **设置** → **帮助与关于** → **高级**
+3. 点击 **Access Token** → 复制令牌
+
+**通过 curl：**
 ```bash
 curl -XPOST -d '{"type":"m.login.password", "user":"yourusername", "password":"yourpassword"}' \
   "https://matrix.org/_matrix/client/r0/login"
 ```
 
-### Finding Room ID
+### 查找 Room ID
 
-In Element, open the room → **Room Settings** → **Advanced** → copy the **Internal room ID**.
+在 Element 中，打开房间 → **房间设置** → **高级** → 复制 **内部 Room ID**。
 
-### Example: Complete Setup
+### 完整配置示例
 
 ```bash
-# 1. Create config directory
+# 1. 创建配置目录
 mkdir -p ~/.config/shijima-qt
 
-# 2. Write config (replace with your values)
+# 2. 写入配置（替换为你自己的值）
 cat > ~/.config/shijima-qt/matrix.json << 'EOF'
 {
   "homeserver": "https://matrix.org",
   "userId": "@shijima_demo:matrix.org",
-  "accessToken": "syt_xxxxxxxx_xxxxxxxx",
+  "username": "yourusername",
+  "password": "yourpassword",
   "roomId": "!xxxxxxxxxxxx:matrix.org"
 }
 EOF
 
-# 3. Run Shijima-Qt (Linux example)
+# 3. 运行 Shijima-Qt（Linux 示例）
 LD_LIBRARY_PATH=libshimejifinder/build/unarr:$LD_LIBRARY_PATH ./shijima-qt
 ```
 
-Now right-click your mascot and select **Send Message** to chat through Matrix!
+现在右键点击你的宠物，选择 **发送消息** 来通过 Matrix 聊天吧！
