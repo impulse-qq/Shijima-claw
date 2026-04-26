@@ -143,12 +143,15 @@ void ShijimaWidget::paintEvent(QPaintEvent *event) {
         // Position bubble within widget bounds (clamp y to be >= 0)
         int bubbleY = m_drawOrigin.y() - 30;
         if (bubbleY < 5) bubbleY = 5;  // Ensure bubble is visible when mascot is at top
-        QRect bubbleRect(m_drawOrigin.x(), bubbleY, 200, 25);
+        QString displayText = m_currentBubbleText.left(50);
+        QFontMetrics fm(font);
+        int textWidth = fm.horizontalAdvance(displayText);
+        int bubbleWidth = textWidth + 20;  // padding
+        QRect bubbleRect(m_drawOrigin.x(), bubbleY, bubbleWidth, 25);
         painter.setBrush(QColor(255, 255, 220, 230));
         painter.setPen(Qt::darkGray);
         painter.drawRoundedRect(bubbleRect, 5, 5);
-        painter.drawText(bubbleRect, Qt::AlignLeft | Qt::AlignVCenter,
-            m_currentBubbleText.left(50));
+        painter.drawText(bubbleRect, Qt::AlignLeft | Qt::AlignVCenter, displayText);
     }
 #ifdef __linux__
     if (Platform::useWindowMasks()) {
@@ -357,6 +360,13 @@ void ShijimaWidget::sendMatrixMessage(const QString &text) {
         return;
     }
 
+    // Check if this mascot has a room assigned
+    if (m_matrixRoomId.isEmpty()) {
+        debugLog("sendMatrixMessage: no room assigned to this mascot");
+        showMessageBubble("[未分配房间]");
+        return;
+    }
+
     // Wire up error signal to bubble display
     QObject::connect(client, &MatrixClient::errorOccurred, this,
         [this](const QString &error) {
@@ -364,8 +374,7 @@ void ShijimaWidget::sendMatrixMessage(const QString &text) {
             showMessageBubble(QString("[Error: %1]").arg(error));
         }, Qt::SingleShotConnection);
 
-    client->sendMessage(text);
-    showMessageBubble(text);
+    client->sendMessage(text, m_matrixRoomId);
 }
 
 ShijimaWidget::~ShijimaWidget() {
