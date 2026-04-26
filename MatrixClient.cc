@@ -185,8 +185,8 @@ void MatrixClient::stopSyncLoop() {
     }
 }
 
-void MatrixClient::sendMessage(const QString &text) {
-    MATRIX_LOG(QString("sendMessage() called, text=\"" + text + "\""));
+void MatrixClient::sendMessage(const QString &text, const QString &roomId) {
+    MATRIX_LOG(QString("sendMessage() called, text=\"" + text + "\" roomId=\"" + roomId + "\""));
     if (m_accessToken.isEmpty()) {
         MATRIX_ERR("sendMessage() failed: No access token");
         emit errorOccurred("No access token");
@@ -197,8 +197,9 @@ void MatrixClient::sendMessage(const QString &text) {
     static long long txnIdCounter = 0;
     long long txnId = txnIdBase + (txnIdCounter++ % 100000);
 
+    QString targetRoom = roomId.isEmpty() ? m_roomId : roomId;
     Client cli(m_homeserver.toStdString());
-    std::string path = "/_matrix/client/r0/rooms/" + m_roomId.toStdString()
+    std::string path = "/_matrix/client/r0/rooms/" + targetRoom.toStdString()
         + "/send/m.room.message/" + std::to_string(txnId);
 
     Headers headers;

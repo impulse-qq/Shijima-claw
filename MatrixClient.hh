@@ -43,7 +43,7 @@ public:
     void login();
     void startSyncLoop();
     void stopSyncLoop();
-    void sendMessage(const QString &text);
+    void sendMessage(const QString &text, const QString &roomId = "");
 
     bool isConnected() const { return m_connected.load(); }
     QString lastError() const { return m_lastError; }
