@@ -759,7 +759,7 @@ ShijimaManager::ShijimaManager(QWidget *parent):
 
     m_matrixClient = new MatrixClient(this);
 
-    QString configPath = QDir::homePath() + "/.config/shijima-qt/matrix.json";
+    QString configPath = QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation) + "/matrix.json";
     if (QFile::exists(configPath)) {
         if (m_matrixClient->loadConfig(configPath)) {
             m_matrixClient->login();

@@ -18,6 +18,7 @@
 
 #include "MatrixClient.hh"
 #include <httplib.h>
+#include <chrono>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonArray>
@@ -109,8 +110,9 @@ void MatrixClient::sendMessage(const QString &text) {
         return;
     }
 
-    static long long txnId = 0;
-    txnId++;
+    static long long txnIdBase = std::chrono::steady_clock::now().time_since_epoch().count() % 100000;
+    static long long txnIdCounter = 0;
+    long long txnId = txnIdBase + (txnIdCounter++ % 100000);
 
     Client cli(m_homeserver.toStdString());
     std::string path = "/_matrix/client/r0/rooms/" + m_roomId.toStdString()
