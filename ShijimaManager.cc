@@ -771,19 +771,29 @@ ShijimaManager::ShijimaManager(QWidget *parent):
             m_matrixClient->startSyncLoop();
             std::cerr << "[ShijimaManager] startSyncLoop() called" << std::endl;
 
-            if (m_matrixClient) {
-                connect(m_matrixClient, &MatrixClient::connectedChanged,
-                    [this](bool connected) {
-                        if (connected && !m_matrixMessageConnected && !m_mascots.empty()) {
-                            ShijimaWidget *firstMascot = m_mascots.front();
-                            connect(m_matrixClient, &MatrixClient::messageReceived,
-                                [firstMascot](const QString &sender, const QString &body, const QString &){
-                                    std::cerr << "[ShijimaManager] messageReceived: sender=" << sender.toStdString() << " body=" << body.toStdString() << std::endl;
-                                    firstMascot->showMessageBubble(body);
-                                });
-                            m_matrixMessageConnected = true;
+            if (m_matrixClient && !m_matrixMessageConnected) {
+                connect(m_matrixClient, &MatrixClient::messageReceived,
+                    [this](const QString &sender, const QString &body, const QString &roomId) {
+                        std::cerr << "[ShijimaManager] messageReceived: sender=" << sender.toStdString()
+                            << " body=" << body.toStdString() << " roomId=" << roomId.toStdString() << std::endl;
+
+                        bool delivered = false;
+                        for (auto mascot : m_mascots) {
+                            if (mascot->matrixRoomId() == roomId) {
+                                mascot->showMessageBubble(body);
+                                delivered = true;
+                            }
+                        }
+                        if (!delivered) {
+                            // Fallback: deliver to all unassigned mascots
+                            for (auto mascot : m_mascots) {
+                                if (mascot->matrixRoomId().isEmpty()) {
+                                    mascot->showMessageBubble(body);
+                                }
+                            }
                         }
                     });
+                m_matrixMessageConnected = true;
             }
         }
     }
@@ -1127,13 +1137,28 @@ ShijimaWidget *ShijimaManager::spawn(std::string const& name) {
     m_mascotsById[shimeji->mascotId()] = shimeji;
     env->reset_scale();
 
-    // Connect Matrix messages to first mascot bubble if not already connected
+    // Connect Matrix messages with room routing
     if (m_matrixClient != nullptr && !m_matrixMessageConnected) {
-        ShijimaWidget *firstMascot = m_mascots.front();
         connect(m_matrixClient, &MatrixClient::messageReceived,
-            [firstMascot](const QString &sender, const QString &body, const QString &){
-                std::cerr << "[ShijimaManager] messageReceived (spawn): sender=" << sender.toStdString() << " body=" << body.toStdString() << std::endl;
-                firstMascot->showMessageBubble(body);
+            [this](const QString &sender, const QString &body, const QString &roomId) {
+                std::cerr << "[ShijimaManager] messageReceived: sender=" << sender.toStdString()
+                    << " body=" << body.toStdString() << " roomId=" << roomId.toStdString() << std::endl;
+
+                bool delivered = false;
+                for (auto mascot : m_mascots) {
+                    if (mascot->matrixRoomId() == roomId) {
+                        mascot->showMessageBubble(body);
+                        delivered = true;
+                    }
+                }
+                if (!delivered) {
+                    // Fallback: deliver to all unassigned mascots
+                    for (auto mascot : m_mascots) {
+                        if (mascot->matrixRoomId().isEmpty()) {
+                            mascot->showMessageBubble(body);
+                        }
+                    }
+                }
             });
         m_matrixMessageConnected = true;
     }
