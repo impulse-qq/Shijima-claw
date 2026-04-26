@@ -83,12 +83,14 @@ bool MatrixClient::loadConfig(const QString &path) {
     QJsonObject obj = doc.object();
     m_homeserver = obj.value("homeserver").toString();
     m_userId = obj.value("userId").toString();
-    m_accessToken = obj.value("accessToken").toString();
+    m_username = obj.value("username").toString();
+    m_password = obj.value("password").toString();
     m_roomId = obj.value("roomId").toString();
+    m_accessToken = obj.value("accessToken").toString(); // backward compat, may be empty
 
     if (m_homeserver.isEmpty() || m_userId.isEmpty() ||
-        m_accessToken.isEmpty() || m_roomId.isEmpty()) {
-        m_lastError = "Config missing required fields (homeserver, userId, accessToken, roomId)";
+        m_username.isEmpty() || m_password.isEmpty() || m_roomId.isEmpty()) {
+        m_lastError = "Config missing required fields (homeserver, userId, username, password, roomId)";
         return false;
     }
 
