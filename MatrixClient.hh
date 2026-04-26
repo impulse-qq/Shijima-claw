@@ -70,6 +70,8 @@ private:
     QString m_roomId;
     QString m_homeserver;
     QString m_userId;
+    QString m_username;
+    QString m_password;
     QString m_lastError;
     QString m_nextBatch;
     std::atomic<int> m_retryCount;
