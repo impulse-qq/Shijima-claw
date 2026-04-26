@@ -106,4 +106,8 @@ private:
     int m_mascotId;
     QTimer *m_messageBubbleTimer;
     QString m_currentBubbleText;
+    QString m_matrixRoomId;
+public:
+    QString matrixRoomId() const { return m_matrixRoomId; }
+    void setMatrixRoomId(const QString &roomId) { m_matrixRoomId = roomId; }
 };
