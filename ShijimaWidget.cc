@@ -37,6 +37,18 @@
 #include "ShijimaManager.hpp"
 #include <shimejifinder/utils.hpp>
 
+static QFile *s_debugLogFile = nullptr;
+static QTextStream *s_debugStream = nullptr;
+static void debugLog(const QString &msg) {
+    if (!s_debugLogFile) {
+        s_debugLogFile = new QFile("/tmp/shijima-debug.log");
+        s_debugLogFile->open(QIODevice::WriteOnly | QIODevice::Append);
+        s_debugStream = new QTextStream(s_debugLogFile);
+    }
+    *s_debugStream << msg << "\n";
+    s_debugStream->flush();
+}
+
 using namespace shijima;
 
 ShijimaWidget::ShijimaWidget(MascotData *mascotData,
@@ -127,7 +139,10 @@ void ShijimaWidget::paintEvent(QPaintEvent *event) {
         QFont font = painter.font();
         font.setPointSize(10);
         painter.setFont(font);
-        QRect bubbleRect(m_drawOrigin.x(), m_drawOrigin.y() - 30, 200, 25);
+        // Position bubble within widget bounds (clamp y to be >= 0)
+        int bubbleY = m_drawOrigin.y() - 30;
+        if (bubbleY < 5) bubbleY = 5;  // Ensure bubble is visible when mascot is at top
+        QRect bubbleRect(m_drawOrigin.x(), bubbleY, 200, 25);
         painter.setBrush(QColor(255, 255, 220, 230));
         painter.setPen(Qt::darkGray);
         painter.drawRoundedRect(bubbleRect, 5, 5);
@@ -317,10 +332,14 @@ void ShijimaWidget::showContextMenu(QPoint const& pos) {
 void ShijimaWidget::showMessageBubble(const QString &text) {
     m_currentBubbleText = text;
     m_messageBubbleTimer->start(5000);
+    debugLog(QString("showMessageBubble: text=%1, drawOrigin=(%2,%3), widgetSize=(%4,%5)")
+        .arg(text).arg(m_drawOrigin.x()).arg(m_drawOrigin.y())
+        .arg(width()).arg(height()));
     repaint();
 }
 
 void ShijimaWidget::sendMatrixMessage(const QString &text) {
+    debugLog(QString("sendMatrixMessage: %1").arg(text));
     // TODO: Integrate with MatrixClient to send messages
     showMessageBubble(text);
 }

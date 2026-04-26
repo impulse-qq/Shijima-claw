@@ -1,14 +1,32 @@
 # Roadmap: Shijima-Qt
 
 **Milestone:** v0.1 — Build Fix
-**Total phases:** 1
-**Status:** Complete
+**Total phases:** 2
+**Status:** In Progress
 
 ## Phase Summary
 
 | # | Phase | Goal | Requirements | Success Criteria | Status |
 |---|-------|------|--------------|-----------------|--------|
 | 1 | Build Fix | Fix linker errors and verify launch | FIX-01, FIX-02, FIX-03, FIX-04 | 4 | Complete |
+| 2 | Matrix send/receive message functionality | Route sendMatrixMessage through MatrixClient; add error feedback | MATRIX-01, MATRIX-02, MATRIX-03 | TBD | Planned |
+
+## Phase 2: Matrix send/receive message functionality
+
+**Goal:** Implement Matrix send/receive message functionality — routing `ShijimaWidget::sendMatrixMessage()` through `MatrixClient::sendMessage()` and handling incoming messages
+
+**Requirements:**
+- MATRIX-01: `ShijimaWidget::sendMatrixMessage()` routes to `MatrixClient::sendMessage()` when connected
+- MATRIX-02: Config path uses `QStandardPaths::AppConfigLocation` for cross-platform
+- MATRIX-03: txnId uses timestamp-based generation to avoid rapid-send collisions
+
+**Depends on:** Phase 1
+
+**Plans:** 2 plans
+
+Plans:
+- [ ] 02-01-PLAN.md — Wire sendMatrixMessage to MatrixClient::sendMessage() with error handling
+- [ ] 02-02-PLAN.md — Fix config path (QStandardPaths) and txnId collision
 
 ---
 

@@ -16,6 +16,9 @@ See: .planning/PROJECT.md (updated 2026-04-25)
 
 ## Accumulated Context
 
+### Roadmap Evolution
+- Phase 2 added: Matrix send/receive message functionality
+
 - FIX-01: SHIJIMA_LOGGING_ENABLED fixed via target_compile_definitions in libshijima/CMakeLists.txt
 - FIX-02: sendMatrixMessage implemented as stub in ShijimaWidget.cc
 - FIX-03: Platform/Makefile dependency chain fixed — all:: target now before include
