@@ -141,8 +141,18 @@ endif
 STD_CFLAGS := -Wall -fPIC
 STD_CXXFLAGS := -Wall -std=c++17 -fPIC
 
+# cpp-httplib HTTPS support (for Matrix integration)
+STD_CXXFLAGS += -DCPPHTTPLIB_OPENSSL_SUPPORT
+
 PKG_CFLAGS = $(shell [ -z "$(PKG_LIBS)" ] || $(PKG_CONFIG) --cflags $(PKG_LIBS))
 PKG_LDFLAGS = $(shell [ -z "$(PKG_LIBS)" ] || $(PKG_CONFIG) --libs $(PKG_LIBS))
+
+# OpenSSL for cpp-httplib HTTPS support
+ifneq ($(PLATFORM),Windows)
+  SSL_LDFLAGS := -lssl -lcrypto
+else
+  SSL_LDFLAGS := -lssl -lcrypto -lgdi32 -lws2_32
+endif
 
 ifneq ($(PLATFORM),Windows)
 SOURCES_FILTERED = $(filter-out %.rc,$(SOURCES))
@@ -153,7 +163,7 @@ endif
 OBJECTS = $(patsubst %.rc,%.o,$(patsubst %.c,%.o,$(patsubst %.mm,%.o,$(patsubst %.cc,%.o,$(SOURCES_FILTERED)))))
 CFLAGS = $(STD_CFLAGS) $(CONFIG_CFLAGS) $(PLATFORM_CFLAGS) $(QT_CFLAGS) $(PKG_CFLAGS)
 CXXFLAGS = $(STD_CXXFLAGS) $(CONFIG_CXXFLAGS) $(PLATFORM_CXXFLAGS) $(QT_CFLAGS) $(PKG_CFLAGS)
-LDFLAGS = $(CONFIG_LDFLAGS) $(PLATFORM_LDFLAGS) $(QT_LDFLAGS) $(PKG_LDFLAGS)
+LDFLAGS = $(CONFIG_LDFLAGS) $(PLATFORM_LDFLAGS) $(QT_LDFLAGS) $(PKG_LDFLAGS) $(SSL_LDFLAGS)
 CMAKEFLAGS = $(CONFIG_CMAKEFLAGS)
 
 %.o: %.c
