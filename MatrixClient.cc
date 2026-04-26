@@ -98,15 +98,65 @@ bool MatrixClient::loadConfig(const QString &path) {
 }
 
 void MatrixClient::login() {
-    MATRIX_LOG(QString("login() called, token present: ") + (m_accessToken.isEmpty() ? "no" : "yes"));
-    if (m_accessToken.isEmpty()) {
-        m_lastError = "No access token configured";
+    MATRIX_LOG(QString("login() called, username=") + m_username);
+    if (m_username.isEmpty() || m_password.isEmpty()) {
+        m_lastError = "No username or password configured";
         MATRIX_ERR("Login failed: " + m_lastError);
         emit errorOccurred(m_lastError);
         return;
     }
+
+    Client cli(m_homeserver.toStdString());
+    std::string path = "/_matrix/client/r0/login";
+
+    QJsonObject identifier;
+    identifier["type"] = "m.id.user";
+    identifier["user"] = m_username;
+
+    QJsonObject req;
+    req["type"] = "m.login.password";
+    req["identifier"] = identifier;
+    req["password"] = m_password;
+
+    QJsonDocument doc(req);
+    std::string body = doc.toJson(QJsonDocument::Compact).toStdString();
+
+    MATRIX_LOG(QString("login() POST ") + QString::fromStdString(path));
+    auto res = cli.Post(path.c_str(), body, "application/json");
+    if (!res || res->status != 200) {
+        std::string err = res ? res->body : "Connection failed";
+        m_lastError = QString::fromStdString(err);
+        MATRIX_ERR("login() failed: " + m_lastError);
+        emit errorOccurred(m_lastError);
+        m_connected = false;
+        emit connectedChanged(false);
+        return;
+    }
+
+    QJsonParseError parseError;
+    QJsonDocument respDoc = QJsonDocument::fromJson(QByteArray::fromStdString(res->body), &parseError);
+    if (parseError.error != QJsonParseError::NoError) {
+        m_lastError = "Login response JSON parse error: " + parseError.errorString();
+        MATRIX_ERR("login() failed: " + m_lastError);
+        emit errorOccurred(m_lastError);
+        m_connected = false;
+        emit connectedChanged(false);
+        return;
+    }
+
+    QJsonObject resp = respDoc.object();
+    m_accessToken = resp.value("access_token").toString();
+    if (m_accessToken.isEmpty()) {
+        m_lastError = "Login response missing access_token";
+        MATRIX_ERR("login() failed: " + m_lastError);
+        emit errorOccurred(m_lastError);
+        m_connected = false;
+        emit connectedChanged(false);
+        return;
+    }
+
     m_connected = true;
-    MATRIX_LOG("login() succeeded, connected=true");
+    MATRIX_LOG("login() succeeded, token obtained");
     emit connectedChanged(true);
 }
 
