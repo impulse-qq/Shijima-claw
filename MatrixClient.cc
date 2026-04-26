@@ -91,13 +91,16 @@ bool MatrixClient::loadConfig(const QString &path) {
     if (m_homeserver.isEmpty() || m_userId.isEmpty() ||
         m_username.isEmpty() || m_password.isEmpty() || m_roomId.isEmpty()) {
         m_lastError = "Config missing required fields (homeserver, userId, username, password, roomId)";
+        std::cerr << "DEBUG loadConfig() FAIL: missing fields hs=" << m_homeserver.isEmpty() << " uid=" << m_userId.isEmpty() << " user=" << m_username.isEmpty() << " pass=" << m_password.isEmpty() << " room=" << m_roomId.isEmpty() << std::endl;
         return false;
     }
 
+    std::cerr << "DEBUG loadConfig() OK username=" << m_username.toStdString() << " password_len=" << m_password.length() << std::endl;
     return true;
 }
 
 void MatrixClient::login() {
+    std::cerr << "DEBUG login() ENTER username=" << m_username.toStdString() << std::endl;
     MATRIX_LOG(QString("login() called, username=") + m_username);
     if (m_username.isEmpty() || m_password.isEmpty()) {
         m_lastError = "No username or password configured";
@@ -157,6 +160,7 @@ void MatrixClient::login() {
 
     m_connected = true;
     MATRIX_LOG("login() succeeded, token obtained");
+    std::cerr << "DEBUG login() EXIT connected=" << m_connected.load() << " token_len=" << m_accessToken.length() << std::endl;
     emit connectedChanged(true);
 }
 
@@ -166,8 +170,10 @@ void MatrixClient::startSyncLoop() {
         return;
     }
     MATRIX_LOG("startSyncLoop() starting sync thread");
+    std::cerr << "DEBUG startSyncLoop() creating thread..." << std::endl;
     m_running = true;
     m_syncThread = new std::thread([this]() { syncLoop(); });
+    std::cerr << "DEBUG startSyncLoop() thread created" << std::endl;
 }
 
 void MatrixClient::stopSyncLoop() {
@@ -202,11 +208,7 @@ void MatrixClient::sendMessage(const QString &text) {
     content["msgtype"] = "m.text";
     content["body"] = text;
 
-    QJsonObject wrapper;
-    wrapper["content"] = content;
-    wrapper["type"] = "m.room.message";
-
-    QJsonDocument doc(wrapper);
+    QJsonDocument doc(content);
     std::string body = doc.toJson(QJsonDocument::Compact).toStdString();
 
     MATRIX_LOG(QString("sendMessage() PUT ") + QString::fromStdString(path) + " body=" + QString::fromStdString(body));
@@ -222,10 +224,9 @@ void MatrixClient::sendMessage(const QString &text) {
 }
 
 void MatrixClient::syncLoop() {
+    std::cerr << "DEBUG syncLoop() ENTER token_len=" << m_accessToken.length() << std::endl;
     MATRIX_LOG(QString("syncLoop() started, homeserver=") + m_homeserver + " roomId=" + m_roomId);
     Client cli(m_homeserver.toStdString());
-    Headers headers;
-    headers.emplace("Authorization", "Bearer " + m_accessToken.toStdString());
 
     while (m_running.load()) {
         if (!m_connected.load()) {
@@ -238,6 +239,12 @@ void MatrixClient::syncLoop() {
         if (!m_nextBatch.isEmpty()) {
             path += "&since=" + m_nextBatch.toStdString();
         }
+
+        // Refresh headers each time since token may have been updated by login()
+        Headers headers;
+        headers.emplace("Authorization", "Bearer " + m_accessToken.toStdString());
+        std::cerr << "DEBUG syncLoop() token len=" << m_accessToken.length() << " connected=" << m_connected.load() << std::endl;
+        MATRIX_LOG(QString("syncLoop() Authorization: Bearer length=") + QString::number(m_accessToken.length()));
 
         MATRIX_LOG(QString("syncLoop() GET ") + QString::fromStdString(path));
         auto res = cli.Get(path.c_str(), headers);
@@ -311,22 +318,29 @@ void MatrixClient::syncLoop() {
         for (auto it = join.begin(); it != join.end(); ++it) {
             MATRIX_LOG(QString("syncLoop() room ID in response: [") + it.key() + "]");
         }
+        MATRIX_LOG(QString("syncLoop() join.contains(m_roomId)=") + (join.contains(m_roomId) ? "true" : "false"));
         if (join.contains(m_roomId)) {
             MATRIX_LOG("syncLoop() Found my room! Processing events...");
             QJsonObject roomData = join.value(m_roomId).toObject();
             QJsonArray events = roomData.value("timeline").toObject()
                 .value("events").toArray();
             MATRIX_LOG(QString("syncLoop() timeline events count=") + QString::number(events.size()));
+            if (events.isEmpty()) {
+                MATRIX_LOG("syncLoop() No events in timeline");
+            }
             for (const QJsonValue &ev : events) {
                 QJsonObject event = ev.toObject();
                 QString evType = event.value("type").toString();
                 QString evSender = event.value("sender").toString();
                 MATRIX_LOG(QString("syncLoop() event: type=") + evType + " sender=" + evSender);
-                if (isValidEvent(event)) {
+                bool valid = isValidEvent(event);
+                MATRIX_LOG(QString("syncLoop() isValidEvent() returned: ") + (valid ? "true" : "false"));
+                if (valid) {
                     QString sender = extractSender(event);
                     QString body = extractBody(event);
                     MATRIX_LOG(QString("syncLoop() valid event: sender=") + sender + " body=" + body);
                     if (!sender.isEmpty() && !body.isEmpty()) {
+                        MATRIX_LOG(QString("syncLoop() emitting messageReceived: sender=") + sender + " body=" + body);
                         QMetaObject::invokeMethod(this, [this, sender, body]() {
                             emit messageReceived(sender, body, m_roomId);
                         }, Qt::QueuedConnection);
@@ -358,16 +372,26 @@ QString MatrixClient::extractBody(const QJsonObject &event) {
 }
 
 bool MatrixClient::isValidEvent(const QJsonObject &event) {
-    if (event.value("type").toString() != "m.room.message") {
+    QString evType = event.value("type").toString();
+    MATRIX_LOG(QString("isValidEvent() checking: type=") + evType);
+    if (evType != "m.room.message") {
+        MATRIX_LOG(QString("isValidEvent() rejecting: not m.room.message, is ") + evType);
         return false;
     }
     QJsonObject content = event.value("content").toObject();
-    if (content.value("msgtype").toString() != "m.text") {
+    QString msgtype = content.value("msgtype").toString();
+    MATRIX_LOG(QString("isValidEvent() msgtype=") + msgtype);
+    if (msgtype != "m.text") {
+        MATRIX_LOG(QString("isValidEvent() rejecting: not m.text, is ") + msgtype);
         return false;
     }
-    if (extractBody(event).isEmpty()) {
+    QString body = extractBody(event);
+    MATRIX_LOG(QString("isValidEvent() body length=") + QString::number(body.length()));
+    if (body.isEmpty()) {
+        MATRIX_LOG("isValidEvent() rejecting: body is empty");
         return false;
     }
+    MATRIX_LOG("isValidEvent() accepting");
     return true;
 }
 

@@ -764,20 +764,26 @@ ShijimaManager::ShijimaManager(QWidget *parent):
     if (QFile::exists(configPath)) {
         std::cerr << "[ShijimaManager] Config file exists, loading..." << std::endl;
         if (m_matrixClient->loadConfig(configPath)) {
-            std::cerr << "[ShijimaManager] Config loaded, calling login()..." << std::endl;
+            std::cerr << "[ShijimaManager] Config loaded" << std::endl;
+            std::cerr << "[ShijimaManager] Calling login()..." << std::endl;
             m_matrixClient->login();
             std::cerr << "[ShijimaManager] login() done, calling startSyncLoop()..." << std::endl;
             m_matrixClient->startSyncLoop();
-            std::cerr << "[ShijimaManager] startSyncLoop() done" << std::endl;
+            std::cerr << "[ShijimaManager] startSyncLoop() called" << std::endl;
 
-            // Connect Matrix messages to first mascot bubble
-            if (!mascots().empty() && !m_matrixMessageConnected) {
-                ShijimaWidget *firstMascot = mascots().front();
-                connect(m_matrixClient, &MatrixClient::messageReceived,
-                    [firstMascot](const QString &, const QString &body, const QString &){
-                        firstMascot->showMessageBubble(body);
+            if (m_matrixClient) {
+                connect(m_matrixClient, &MatrixClient::connectedChanged,
+                    [this](bool connected) {
+                        if (connected && !m_matrixMessageConnected && !m_mascots.empty()) {
+                            ShijimaWidget *firstMascot = m_mascots.front();
+                            connect(m_matrixClient, &MatrixClient::messageReceived,
+                                [firstMascot](const QString &sender, const QString &body, const QString &){
+                                    std::cerr << "[ShijimaManager] messageReceived: sender=" << sender.toStdString() << " body=" << body.toStdString() << std::endl;
+                                    firstMascot->showMessageBubble(body);
+                                });
+                            m_matrixMessageConnected = true;
+                        }
                     });
-                m_matrixMessageConnected = true;
             }
         }
     }
@@ -1125,7 +1131,8 @@ ShijimaWidget *ShijimaManager::spawn(std::string const& name) {
     if (m_matrixClient != nullptr && !m_matrixMessageConnected) {
         ShijimaWidget *firstMascot = m_mascots.front();
         connect(m_matrixClient, &MatrixClient::messageReceived,
-            [firstMascot](const QString &, const QString &body, const QString &){
+            [firstMascot](const QString &sender, const QString &body, const QString &){
+                std::cerr << "[ShijimaManager] messageReceived (spawn): sender=" << sender.toStdString() << " body=" << body.toStdString() << std::endl;
                 firstMascot->showMessageBubble(body);
             });
         m_matrixMessageConnected = true;
