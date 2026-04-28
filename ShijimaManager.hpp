@@ -130,7 +130,10 @@ private:
     std::list<std::function<void(ShijimaManager *)>> m_tickCallbacks;
     MatrixClient *m_matrixClient = nullptr;
     bool m_matrixMessageConnected = false;
+    bool m_loadingMascots = false;
+    void loadMascotConfig();
 public:
+    void saveMascotConfig();
     MatrixClient *matrixClient() { return m_matrixClient; }
     void showMatrixSendDialog();
 };

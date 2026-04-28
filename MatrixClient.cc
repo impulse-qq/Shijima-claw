@@ -317,17 +317,15 @@ void MatrixClient::syncLoop() {
         QJsonObject join = room.value("join").toObject();
         MATRIX_LOG(QString("syncLoop() rooms.join count=") + QString::number(join.size()) + " my roomId=[" + m_roomId + "]");
         for (auto it = join.begin(); it != join.end(); ++it) {
-            MATRIX_LOG(QString("syncLoop() room ID in response: [") + it.key() + "]");
-        }
-        MATRIX_LOG(QString("syncLoop() join.contains(m_roomId)=") + (join.contains(m_roomId) ? "true" : "false"));
-        if (join.contains(m_roomId)) {
-            MATRIX_LOG("syncLoop() Found my room! Processing events...");
-            QJsonObject roomData = join.value(m_roomId).toObject();
+            QString actualRoomId = it.key();
+            MATRIX_LOG(QString("syncLoop() room ID in response: [") + actualRoomId + "]");
+
+            QJsonObject roomData = it.value().toObject();
             QJsonArray events = roomData.value("timeline").toObject()
                 .value("events").toArray();
-            MATRIX_LOG(QString("syncLoop() timeline events count=") + QString::number(events.size()));
+            MATRIX_LOG(QString("syncLoop() room=") + actualRoomId + " timeline events count=" + QString::number(events.size()));
             if (events.isEmpty()) {
-                MATRIX_LOG("syncLoop() No events in timeline");
+                continue;
             }
             for (const QJsonValue &ev : events) {
                 QJsonObject event = ev.toObject();
@@ -341,9 +339,9 @@ void MatrixClient::syncLoop() {
                     QString body = extractBody(event);
                     MATRIX_LOG(QString("syncLoop() valid event: sender=") + sender + " body=" + body);
                     if (!sender.isEmpty() && !body.isEmpty()) {
-                        MATRIX_LOG(QString("syncLoop() emitting messageReceived: sender=") + sender + " body=" + body);
-                        QMetaObject::invokeMethod(this, [this, sender, body]() {
-                            emit messageReceived(sender, body, m_roomId);
+                        MATRIX_LOG(QString("syncLoop() emitting messageReceived: sender=") + sender + " body=" + body + " room=" + actualRoomId);
+                        QMetaObject::invokeMethod(this, [this, sender, body, actualRoomId]() {
+                            emit messageReceived(sender, body, actualRoomId);
                         }, Qt::QueuedConnection);
                     }
                 }

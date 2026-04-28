@@ -46,7 +46,7 @@ TARGET_LDFLAGS := -Llibshimejifinder/build/unarr -lunarr
 
 ifeq ($(PLATFORM),Linux)
 QT_LIBS += DBus
-PKG_LIBS := x11
+PKG_LIBS := x11 pugixml
 TARGET_LDFLAGS += -Wl,-R -Wl,$(shell pwd)/publish/Linux/$(CONFIG)
 endif
 

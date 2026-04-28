@@ -112,6 +112,7 @@ void ShijimaManager::killAll() {
     for (auto mascot : m_mascots) {
         mascot->markForDeletion();
     }
+    saveMascotConfig();
 }
 
 void ShijimaManager::killAll(QString const& name) {
@@ -120,6 +121,7 @@ void ShijimaManager::killAll(QString const& name) {
             mascot->markForDeletion();
         }
     }
+    saveMascotConfig();
 }
 
 void ShijimaManager::killAllButOne(ShijimaWidget *widget) {
@@ -129,6 +131,7 @@ void ShijimaManager::killAllButOne(ShijimaWidget *widget) {
         }
         mascot->markForDeletion();
     }
+    saveMascotConfig();
 }
 
 void ShijimaManager::killAllButOne(QString const& name) {
@@ -142,6 +145,7 @@ void ShijimaManager::killAllButOne(QString const& name) {
             mascot->markForDeletion();
         }
     }
+    saveMascotConfig();
 }
 
 void ShijimaManager::loadData(MascotData *data) {
@@ -779,8 +783,13 @@ ShijimaManager::ShijimaManager(QWidget *parent):
 
                         bool delivered = false;
                         auto lock = acquireLock();
+                        std::cerr << "[ShijimaManager] Routing to " << m_mascots.size()
+                            << " mascots, roomId=" << roomId.toStdString() << std::endl;
                         for (auto mascot : m_mascots) {
+                            std::cerr << "[ShijimaManager]   mascot=" << mascot->mascotName().toStdString()
+                                << " matrixRoomId=" << mascot->matrixRoomId().toStdString() << std::endl;
                             if (mascot->matrixRoomId() == roomId) {
+                                std::cerr << "[ShijimaManager]   -> matched! showing bubble" << std::endl;
                                 mascot->showMessageBubble(body);
                                 delivered = true;
                                 break;
@@ -788,8 +797,11 @@ ShijimaManager::ShijimaManager(QWidget *parent):
                         }
                         if (!delivered) {
                             // Fallback: deliver to all unassigned mascots
+                            std::cerr << "[ShijimaManager] No match, fallback to unassigned mascots" << std::endl;
                             for (auto mascot : m_mascots) {
                                 if (mascot->matrixRoomId().isEmpty()) {
+                                    std::cerr << "[ShijimaManager]   -> fallback bubble to "
+                                        << mascot->mascotName().toStdString() << std::endl;
                                     mascot->showMessageBubble(body);
                                 }
                             }
@@ -799,10 +811,13 @@ ShijimaManager::ShijimaManager(QWidget *parent):
             }
         }
     }
+
+    loadMascotConfig();
 }
 
 void ShijimaManager::itemDoubleClicked(QListWidgetItem *qItem) {
     spawn(qItem->text().toStdString());
+    saveMascotConfig();
 }
 
 void ShijimaManager::closeEvent(QCloseEvent *event) {
@@ -1035,6 +1050,8 @@ void ShijimaManager::tick() {
 
     updateEnvironment();
 
+    bool mascotDeleted = false;
+    bool mascotSpawned = false;
     for (auto iter = m_mascots.end(); iter != m_mascots.begin(); ) {
         --iter;
         ShijimaWidget *shimeji = *iter;
@@ -1045,6 +1062,7 @@ void ShijimaManager::tick() {
             ++iter;
             m_mascots.erase(erasePos);
             m_mascotsById.erase(mascotId);
+            mascotDeleted = true;
             continue;
         }
         shimeji->tick();
@@ -1083,9 +1101,14 @@ void ShijimaManager::tick() {
                 child->show();
                 m_mascots.push_back(child);
                 m_mascotsById[child->mascotId()] = child;
+                mascotSpawned = true;
             }
             breedRequest.available = false;
         }
+    }
+
+    if (mascotDeleted || mascotSpawned) {
+        saveMascotConfig();
     }
     
     for (auto &env : m_env) {
@@ -1148,8 +1171,13 @@ ShijimaWidget *ShijimaManager::spawn(std::string const& name) {
 
                 bool delivered = false;
                 auto lock = acquireLock();
+                std::cerr << "[ShijimaManager] Routing to " << m_mascots.size()
+                    << " mascots, roomId=" << roomId.toStdString() << std::endl;
                 for (auto mascot : m_mascots) {
+                    std::cerr << "[ShijimaManager]   mascot=" << mascot->mascotName().toStdString()
+                        << " matrixRoomId=" << mascot->matrixRoomId().toStdString() << std::endl;
                     if (mascot->matrixRoomId() == roomId) {
+                        std::cerr << "[ShijimaManager]   -> matched! showing bubble" << std::endl;
                         mascot->showMessageBubble(body);
                         delivered = true;
                         break;
@@ -1157,8 +1185,11 @@ ShijimaWidget *ShijimaManager::spawn(std::string const& name) {
                 }
                 if (!delivered) {
                     // Fallback: deliver to all unassigned mascots
+                    std::cerr << "[ShijimaManager] No match, fallback to unassigned mascots" << std::endl;
                     for (auto mascot : m_mascots) {
                         if (mascot->matrixRoomId().isEmpty()) {
+                            std::cerr << "[ShijimaManager]   -> fallback bubble to "
+                                << mascot->mascotName().toStdString() << std::endl;
                             mascot->showMessageBubble(body);
                         }
                     }
@@ -1167,7 +1198,51 @@ ShijimaWidget *ShijimaManager::spawn(std::string const& name) {
         m_matrixMessageConnected = true;
     }
 
+    saveMascotConfig();
     return shimeji;
+}
+
+void ShijimaManager::saveMascotConfig() {
+    if (m_loadingMascots) {
+        return;
+    }
+    m_settings.beginWriteArray("mascots");
+    int i = 0;
+    for (auto mascot : m_mascots) {
+        m_settings.setArrayIndex(i++);
+        m_settings.setValue("name", mascot->mascotName());
+        m_settings.setValue("roomId", mascot->matrixRoomId());
+    }
+    m_settings.endArray();
+}
+
+void ShijimaManager::loadMascotConfig() {
+    int count = m_settings.beginReadArray("mascots");
+    std::cerr << "[ShijimaManager] loadMascotConfig: count=" << count << std::endl;
+    if (count == 0) {
+        m_settings.endArray();
+        return;
+    }
+
+    m_loadingMascots = true;
+    for (int i = 0; i < count; ++i) {
+        m_settings.setArrayIndex(i);
+        QString name = m_settings.value("name").toString();
+        QString roomId = m_settings.value("roomId").toString();
+        std::cerr << "[ShijimaManager] loadMascotConfig[" << i << "]: name=" << name.toStdString()
+            << " roomId=" << roomId.toStdString()
+            << " loaded=" << m_loadedMascots.contains(name) << std::endl;
+        if (!name.isEmpty() && m_loadedMascots.contains(name)) {
+            auto widget = spawn(name.toStdString());
+            if (widget && !roomId.isEmpty()) {
+                widget->setMatrixRoomId(roomId);
+            }
+            std::cerr << "[ShijimaManager] loadMascotConfig: spawned " << name.toStdString()
+                << " widget=" << (widget ? "ok" : "null") << std::endl;
+        }
+    }
+    m_settings.endArray();
+    m_loadingMascots = false;
 }
 
 bool ShijimaManager::eventFilter(QObject *obj, QEvent *event) {

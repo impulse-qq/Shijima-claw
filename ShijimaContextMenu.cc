@@ -125,7 +125,8 @@ void ShijimaContextMenu::showAssignRoomDialog() {
     QString roomId = QInputDialog::getText(parentWidget(),
         "分配到房间", "输入 Room ID:", QLineEdit::Normal,
         shijimaParent()->m_matrixRoomId, &ok);
-    if (ok && !roomId.isEmpty()) {
+    if (ok) {
         shijimaParent()->setMatrixRoomId(roomId);
+        ShijimaManager::defaultManager()->saveMascotConfig();
     }
 }
