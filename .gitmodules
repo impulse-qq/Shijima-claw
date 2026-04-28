@@ -3,7 +3,7 @@
 	url = git@github.com:pixelomer/libshijima
 [submodule "libshimejifinder"]
 	path = libshimejifinder
-	url = git@github.com:pixelomer/libshimejifinder
+	url = https://github.com/impulse-qq/libshimejifinder
 [submodule "cpp-httplib"]
 	path = cpp-httplib
 	url = https://github.com/yhirose/cpp-httplib
