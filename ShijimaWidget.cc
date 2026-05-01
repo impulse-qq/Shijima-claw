@@ -140,17 +140,25 @@ void ShijimaWidget::paintEvent(QPaintEvent *event) {
         QFont font = painter.font();
         font.setPointSize(10);
         painter.setFont(font);
-        // Position bubble above mascot; if no room at top, draw below (clamped to widget bounds)
-        int bubbleY = m_drawOrigin.y() - 30;
-        if (bubbleY < 0) {
-            int imageBottom = m_drawOrigin.y() + scaledSize.height();
-            bubbleY = std::min(imageBottom + 5, m_windowHeight - 25);
-        }
         QString displayText = m_currentBubbleText.left(50);
         QFontMetrics fm(font);
         int textWidth = fm.horizontalAdvance(displayText);
         int bubbleWidth = textWidth + 20;  // padding
-        QRect bubbleRect(m_drawOrigin.x(), bubbleY, bubbleWidth, 25);
+        int bubbleHeight = 25;
+        // Y position: above mascot by default, flip below if no room
+        int bubbleY = m_drawOrigin.y() - bubbleHeight - 5;
+        if (bubbleY < 0) {
+            int imageBottom = m_drawOrigin.y() + scaledSize.height();
+            bubbleY = std::min(imageBottom + 5, m_windowHeight - bubbleHeight);
+        }
+        // X position: centered above mascot, clamped to window bounds
+        int bubbleX = m_drawOrigin.x() + scaledSize.width() / 2 - bubbleWidth / 2;
+        if (bubbleX < 0) {
+            bubbleX = 5;
+        } else if (bubbleX + bubbleWidth > m_windowWidth) {
+            bubbleX = m_windowWidth - bubbleWidth - 5;
+        }
+        QRect bubbleRect(bubbleX, bubbleY, bubbleWidth, bubbleHeight);
         painter.setBrush(QColor(255, 255, 220, 230));
         painter.setPen(Qt::darkGray);
         painter.drawRoundedRect(bubbleRect, 5, 5);
@@ -163,12 +171,22 @@ void ShijimaWidget::paintEvent(QPaintEvent *event) {
         m_windowMask.translate(m_drawOrigin);
         // Include bubble area in mask so it's visible
         if (!m_currentBubbleText.isEmpty()) {
-            int bubbleY = m_drawOrigin.y() - 30;
-            if (bubbleY < 5) bubbleY = 5;
             QFontMetrics fm(QFont("", 10));
             int textWidth = fm.horizontalAdvance(m_currentBubbleText.left(50));
             int bubbleWidth = textWidth + 20;
-            QRect bubbleRect(m_drawOrigin.x(), bubbleY, bubbleWidth, 25);
+            int bubbleHeight = 25;
+            int bubbleY = m_drawOrigin.y() - bubbleHeight - 5;
+            if (bubbleY < 0) {
+                int imageBottom = m_drawOrigin.y() + scaledSize.height();
+                bubbleY = std::min(imageBottom + 5, m_windowHeight - bubbleHeight);
+            }
+            int bubbleX = m_drawOrigin.x() + scaledSize.width() / 2 - bubbleWidth / 2;
+            if (bubbleX < 0) {
+                bubbleX = 5;
+            } else if (bubbleX + bubbleWidth > m_windowWidth) {
+                bubbleX = m_windowWidth - bubbleWidth - 5;
+            }
+            QRect bubbleRect(bubbleX, bubbleY, bubbleWidth, bubbleHeight);
             m_windowMask = m_windowMask.united(QRegion(bubbleRect));
         }
         auto bounding = m_windowMask.boundingRect();
